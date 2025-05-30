@@ -21,7 +21,9 @@ A powerful and flexible Flutter package for adding sketch and annotation capabil
 
 ## 🎥 Live Demo
 
-![Flutter Sketchpad Demo](./example/demo_assets/demo.gif)
+<div align="center">
+  <img src="./example/demo_assets/demo.gif" alt="Flutter Sketchpad Demo" width="350"/>
+</div>
 
 *Experience smooth drawing, text annotations, highlighting, and undo/redo functionality*
 
