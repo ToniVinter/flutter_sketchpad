@@ -48,11 +48,12 @@ class SketchWrapper extends StatefulWidget {
   final double initialFontSize;
 
   /// Callback when a drawing insert is saved
-  final void Function(int sectionIndex, List<Offset> points) onSaveInsert;
+  final void Function(int sectionIndex, List<Offset> points, double strokeWidth,
+      Color color, SketchInsertType type) onSaveInsert;
 
   /// Callback when a text insert is saved
-  final void Function(int sectionIndex, String text, Offset position)
-      onSaveTextInsert;
+  final void Function(int sectionIndex, String text, Offset position,
+      Color color, double fontSize) onSaveTextInsert;
 
   /// Callback when a text insert is updated
   final void Function(String id, String text) onUpdateTextInsert;

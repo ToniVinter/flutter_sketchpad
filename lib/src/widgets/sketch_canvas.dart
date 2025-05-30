@@ -36,9 +36,10 @@ class SketchCanvas extends StatefulWidget {
   final Color selectedColor;
   final double selectedStrokeWidth;
   final double selectedFontSize;
-  final void Function(int sectionIndex, List<Offset> points) onSaveInsert;
-  final void Function(int sectionIndex, String text, Offset position)
-      onSaveTextInsert;
+  final void Function(int sectionIndex, List<Offset> points, double strokeWidth,
+      Color color, SketchInsertType type) onSaveInsert;
+  final void Function(int sectionIndex, String text, Offset position,
+      Color color, double fontSize) onSaveTextInsert;
   final void Function(String id, String text) onUpdateTextInsert;
   final void Function(String id, Offset position) onUpdateTextPosition;
   final void Function(int sectionIndex, Offset position, double size)
@@ -144,9 +145,22 @@ class _SketchCanvasState extends State<SketchCanvas> {
 
     // Save the drawing if there are points
     if (_currentDrawingPoints.length > 1) {
+      final strokeWidth = widget.isHighlightMode
+          ? widget.selectedStrokeWidth * 2
+          : widget.selectedStrokeWidth;
+      final color = widget.isHighlightMode
+          ? widget.selectedColor.withValues(alpha: 0.3)
+          : widget.selectedColor;
+      final type = widget.isHighlightMode
+          ? SketchInsertType.drawing // Could add highlight type later
+          : SketchInsertType.drawing;
+
       widget.onSaveInsert(
         widget.sectionIndex,
         List<Offset>.from(_currentDrawingPoints),
+        strokeWidth,
+        color,
+        type,
       );
     }
 
@@ -215,6 +229,8 @@ class _SketchCanvasState extends State<SketchCanvas> {
         widget.sectionIndex,
         text,
         _newTextPosition!,
+        widget.selectedColor,
+        widget.selectedFontSize,
       );
     }
 
