@@ -1,169 +1,328 @@
-# Flutter Sketchpad
+# 🎨 Flutter Sketchpad
 
-A Flutter package for adding text, drawings, and highlighter annotations to any widget.
+[![Pub Version](https://img.shields.io/pub/v/flutter_sketchpad?color=blue&logo=dart)](https://pub.dev/packages/flutter_sketchpad)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Flutter](https://img.shields.io/badge/Flutter-3.0+-blue?logo=flutter)](https://flutter.dev)
 
-## Features
+A powerful and flexible Flutter package for adding sketch and annotation capabilities to any widget. Perfect for note-taking apps, document annotation, drawing apps, and interactive content.
 
-- **Drawing annotations**: Free-hand drawing with customizable colors and stroke widths
-- **Text annotations**: Add, edit, and move text annotations with customizable font sizes and colors
-- **Highlight annotations**: Highlight areas with semi-transparent colors
-- **Eraser tool**: Remove specific annotations
-- **Customizable toolbar**: Position the toolbar anywhere on screen
-- **Section-based**: Support for multiple sections with independent annotations
+## ✨ Features
 
-## Installation
+- 🖊️ **Drawing & Sketching**: Smooth drawing with customizable stroke width and colors
+- 🖍️ **Highlighting**: Semi-transparent highlighting mode for markup
+- 📝 **Text Annotations**: Add, edit, and move text annotations
+- 🗑️ **Eraser Tool**: Precision erasing with adjustable size
+- 🎨 **Color Picker**: Built-in color selection with preset colors
+- ⚙️ **Customizable Toolbar**: Flexible toolbar positioning and styling
+- 📱 **Touch Optimized**: Smooth touch interactions and gesture handling
+- 💾 **Serializable**: JSON serialization support for saving/loading sketches
+- 🔧 **Section-Based**: Organize annotations by content sections
+- 🎯 **Performance**: Optimized for smooth drawing experience
+
+## 📱 Screenshots
+
+| Drawing Mode | Text Annotations | Highlighting | Toolbar Options |
+|--------------|------------------|--------------|-----------------|
+| ![Drawing](screenshots/drawing.png) | ![Text](screenshots/text.png) | ![Highlight](screenshots/highlight.png) | ![Toolbar](screenshots/toolbar.png) |
+
+## 🚀 Getting Started
+
+### Installation
 
 Add this to your package's `pubspec.yaml` file:
 
 ```yaml
 dependencies:
-  flutter_sketchpad:
-    path: ../flutter_sketchpad
+  flutter_sketchpad: ^1.0.0
 ```
 
-## Usage
+Then run:
+
+```bash
+flutter pub get
+```
 
 ### Basic Usage
-
-Wrap any widget with `AnnotationWrapper` to add annotation functionality:
 
 ```dart
 import 'package:flutter_sketchpad/flutter_sketchpad.dart';
 
-class MyWidget extends StatefulWidget {
+class MySketchApp extends StatefulWidget {
   @override
-  _MyWidgetState createState() => _MyWidgetState();
+  _MySketchAppState createState() => _MySketchAppState();
 }
 
-class _MyWidgetState extends State<MyWidget> {
-  List<AnnotationInsert> _inserts = [];
-  bool _isAnnotationMode = false;
+class _MySketchAppState extends State<MySketchApp> {
+  List<SketchInsert> inserts = [];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Annotations Demo'),
-        actions: [
-          IconButton(
-            icon: Icon(_isAnnotationMode ? Icons.close : Icons.edit),
-            onPressed: () {
-              setState(() {
-                _isAnnotationMode = !_isAnnotationMode;
-              });
-            },
-          ),
-        ],
-      ),
-      body: AnnotationWrapper(
+      body: SketchWrapper(
         sectionIndex: 0,
-        inserts: _inserts,
-        isAnnotationMode: _isAnnotationMode,
-        toolbarPosition: AnnotationToolbarPosition.bottomCenter,
-        onSaveInsert: _onSaveInsert,
-        onSaveTextInsert: _onSaveTextInsert,
-        onUpdateTextInsert: _onUpdateTextInsert,
-        onUpdateTextPosition: _onUpdateTextPosition,
-        onEraseInsertAt: _onEraseInsertAt,
-        child: Container(
-          width: double.infinity,
-          height: 400,
-          color: Colors.grey[200],
-          child: Center(
-            child: Text('Your content here'),
-          ),
-        ),
+        inserts: inserts,
+        isSketchMode: true,
+        onSaveInsert: (sectionIndex, points) {
+          // Handle drawing insert
+          final insert = SketchInsert(
+            id: DateTime.now().millisecondsSinceEpoch.toString(),
+            sectionIndex: sectionIndex,
+            points: points,
+            color: Colors.blue,
+            strokeWidth: 3.0,
+          );
+          setState(() {
+            inserts.add(insert);
+          });
+        },
+        onSaveTextInsert: (sectionIndex, text, position) {
+          // Handle text insert
+          final insert = SketchInsert(
+            id: DateTime.now().millisecondsSinceEpoch.toString(),
+            sectionIndex: sectionIndex,
+            points: [],
+            color: Colors.black,
+            strokeWidth: 1.0,
+            type: SketchInsertType.text,
+            text: text,
+            textPosition: position,
+            fontSize: 16.0,
+          );
+          setState(() {
+            inserts.add(insert);
+          });
+        },
+        onUpdateTextInsert: (id, text) {
+          // Update text content
+          setState(() {
+            final index = inserts.indexWhere((i) => i.id == id);
+            if (index != -1) {
+              inserts[index] = inserts[index].copyWith(text: text);
+            }
+          });
+        },
+        onUpdateTextPosition: (id, position) {
+          // Update text position
+          setState(() {
+            final index = inserts.indexWhere((i) => i.id == id);
+            if (index != -1) {
+              inserts[index] = inserts[index].copyWith(textPosition: position);
+            }
+          });
+        },
+        onEraseInsertAt: (sectionIndex, position, size) {
+          // Handle erasing
+          setState(() {
+            inserts.removeWhere((insert) {
+              return insert.points.any((point) {
+                final distance = (point - position).distance;
+                return distance < size;
+              });
+            });
+          });
+        },
+        child: YourContentWidget(),
       ),
     );
-  }
-
-  void _onSaveInsert(int sectionIndex, List<Offset> points) {
-    final insert = AnnotationInsert(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      sectionIndex: sectionIndex,
-      points: points,
-      color: Colors.black,
-      strokeWidth: 4.0,
-      type: AnnotationInsertType.drawing,
-    );
-    setState(() {
-      _inserts.add(insert);
-    });
-  }
-
-  void _onSaveTextInsert(int sectionIndex, String text, Offset position) {
-    final insert = AnnotationInsert(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      sectionIndex: sectionIndex,
-      points: [],
-      color: Colors.black,
-      strokeWidth: 4.0,
-      type: AnnotationInsertType.text,
-      text: text,
-      textPosition: position,
-      fontSize: 16.0,
-    );
-    setState(() {
-      _inserts.add(insert);
-    });
-  }
-
-  void _onUpdateTextInsert(String id, String text) {
-    setState(() {
-      final index = _inserts.indexWhere((insert) => insert.id == id);
-      if (index != -1) {
-        _inserts[index] = _inserts[index].copyWith(text: text);
-      }
-    });
-  }
-
-  void _onUpdateTextPosition(String id, Offset position) {
-    setState(() {
-      final index = _inserts.indexWhere((insert) => insert.id == id);
-      if (index != -1) {
-        _inserts[index] = _inserts[index].copyWith(textPosition: position);
-      }
-    });
-  }
-
-  void _onEraseInsertAt(int sectionIndex, Offset position, double size) {
-    setState(() {
-      _inserts.removeWhere((insert) {
-        if (insert.sectionIndex != sectionIndex) return false;
-        
-        if (insert.type == AnnotationInsertType.drawing) {
-          return insert.points.any((point) {
-            final distance = (point - position).distance;
-            return distance <= size;
-          });
-        } else if (insert.type == AnnotationInsertType.text && insert.textPosition != null) {
-          final distance = (insert.textPosition! - position).distance;
-          return distance <= size;
-        }
-        
-        return false;
-      });
-    });
   }
 }
 ```
 
-### Customization
+## 🎛️ Advanced Usage
 
-#### Toolbar Position
-
-You can position the toolbar in different locations:
+### Custom Toolbar Positioning
 
 ```dart
-AnnotationWrapper(
-  toolbarPosition: AnnotationToolbarPosition.topRight,
+SketchWrapper(
   // ... other properties
+  toolbarPosition: SketchToolbarPosition.topRight,
+  child: YourContent(),
 )
 ```
 
-Available positions:
-- `topCenter`
-- `topLeft`
-- `topRight`
-- `bottomCenter`
-- `
+### Separate Canvas and Toolbar
+
+For more control, use the canvas and toolbar separately:
+
+```dart
+Stack(
+  children: [
+    SketchCanvas(
+      sectionIndex: 0,
+      inserts: inserts,
+      isSketchMode: true,
+      isDrawingMode: isDrawingMode,
+      isTextMode: isTextMode,
+      // ... other properties
+      child: YourContent(),
+    ),
+    Positioned(
+      top: 50,
+      right: 20,
+      child: SketchToolbar(
+        isEnabled: true,
+        isDrawingMode: isDrawingMode,
+        isTextMode: isTextMode,
+        // ... other properties
+        onToggleDrawingMode: () {
+          setState(() {
+            isDrawingMode = !isDrawingMode;
+          });
+        },
+        // ... other callbacks
+      ),
+    ),
+  ],
+)
+```
+
+### Custom Colors and Styling
+
+```dart
+SketchWrapper(
+  // ... other properties
+  initialColor: Colors.purple,
+  initialStrokeWidth: 5.0,
+  initialFontSize: 18.0,
+  child: YourContent(),
+)
+```
+
+### Section-Based Organization
+
+Organize your annotations by content sections:
+
+```dart
+// Different sections can have different annotations
+SketchWrapper(
+  sectionIndex: 0, // First section
+  inserts: section0Inserts,
+  // ... properties
+)
+
+SketchWrapper(
+  sectionIndex: 1, // Second section
+  inserts: section1Inserts,
+  // ... properties
+)
+```
+
+## 📚 API Reference
+
+### Core Widgets
+
+#### SketchWrapper
+The main widget that provides complete sketch functionality with built-in toolbar.
+
+#### SketchCanvas
+The drawing canvas without toolbar - use for custom implementations.
+
+#### SketchToolbar
+Standalone toolbar component for controlling sketch modes.
+
+### Data Models
+
+#### SketchInsert
+Represents a single sketch element (drawing or text annotation).
+
+```dart
+class SketchInsert {
+  final String id;
+  final String? sketchId;
+  final int sectionIndex;
+  final List<Offset> points;
+  final Color color;
+  final double strokeWidth;
+  final SketchInsertType type;
+  final String? text;
+  final Offset? textPosition;
+  final double? fontSize;
+  final DateTime? createdAt;
+}
+```
+
+#### SketchInsertType
+Enum defining the type of sketch insert:
+- `SketchInsertType.drawing` - Drawing/line annotations
+- `SketchInsertType.text` - Text annotations
+
+### Toolbar Positions
+
+```dart
+enum SketchToolbarPosition {
+  topCenter,
+  topLeft,
+  topRight,
+  bottomCenter,
+  bottomLeft,
+  bottomRight,
+}
+```
+
+## 💾 Persistence
+
+All sketch data is JSON serializable for easy persistence:
+
+```dart
+// Save to JSON
+final json = sketchInsert.toJson();
+final jsonString = jsonEncode(json);
+
+// Load from JSON
+final json = jsonDecode(jsonString);
+final sketchInsert = SketchInsert.fromJson(json);
+```
+
+## 🎨 Customization
+
+### Custom Colors
+
+The package includes a default color palette, but you can provide your own:
+
+- Black
+- White  
+- Orange (#FF9500)
+- Green (#4CD964)
+- Blue (#5AC8FA)
+- Purple (#5856D6)
+- Red (#FF2D55)
+
+### Stroke Widths
+
+Default stroke width options: 2.0, 4.0, 6.0, 8.0, 12.0
+
+### Font Sizes
+
+Default font size options: 12.0, 16.0, 20.0, 24.0, 28.0
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
+
+### Development Setup
+
+1. Clone the repository
+2. Run `flutter pub get`
+3. Make your changes
+4. Run tests: `flutter test`
+5. Submit a pull request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- Built with ❤️ using Flutter
+- Inspired by modern drawing and annotation tools
+- Thanks to the Flutter community for feedback and contributions
+
+## 📞 Support
+
+- 📧 **Email**: [your-email@example.com]
+- 🐛 **Issues**: [GitHub Issues](https://github.com/yourusername/flutter_sketchpad/issues)
+- 💬 **Discussions**: [GitHub Discussions](https://github.com/yourusername/flutter_sketchpad/discussions)
+
+---
+
+**Made with ❤️ by the Flutter Sketchpad Team** 
