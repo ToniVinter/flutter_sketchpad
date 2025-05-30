@@ -19,6 +19,12 @@ A powerful and flexible Flutter package for adding sketch and annotation capabil
 - 🔧 **Section-Based**: Organize annotations by content sections
 - 🎯 **Performance**: Optimized for smooth drawing experience
 
+## 🎥 Live Demo
+
+![Flutter Sketchpad Demo](./demo.gif)
+
+*Experience smooth drawing, text annotations, highlighting, and undo/redo functionality*
+
 ## 📱 Screenshots
 
 | Drawing Mode | Text Annotations | Highlighting | Toolbar Options |
@@ -319,7 +325,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📞 Support
 
-- 📧 **Email**: [your-email@example.com]
+- 📧 **Email**: [antonio.vinterr@gmail.com]
 - 🐛 **Issues**: [GitHub Issues](https://github.com/yourusername/flutter_sketchpad/issues)
 - 💬 **Discussions**: [GitHub Discussions](https://github.com/yourusername/flutter_sketchpad/discussions)
 

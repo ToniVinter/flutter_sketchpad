@@ -62,6 +62,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.0.2"
+  flutter_lucide:
+    dependency: transitive
+    description:
+      name: flutter_lucide
+      sha256: "3b39b730e6145171df8badf983a12c62c4bccfc34dd82ea0cff4a50e78a9294a"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.6.2"
   flutter_sketchpad:
     dependency: "direct main"
     description:

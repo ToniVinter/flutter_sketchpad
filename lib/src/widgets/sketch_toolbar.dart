@@ -1,9 +1,10 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_lucide/flutter_lucide.dart';
 import 'controls/sketch_color_button.dart';
 import 'controls/sketch_font_size_button.dart';
-import 'controls/sketch_stroke_width_button.dart';
+import 'sketch_stroke_width_button.dart';
 
 /// A toolbar that provides sketch tools for marking up content.
 class SketchToolbar extends StatelessWidget {
@@ -105,7 +106,7 @@ class SketchToolbar extends StatelessWidget {
             children: [
               // Drawing mode toggle (pen icon)
               _buildToolbarButton(
-                icon: Icons.edit,
+                icon: LucideIcons.pen,
                 isSelected: isDrawingMode && !isEraserMode,
                 tooltip: 'Toggle Drawing Mode',
                 onPressed: () {
@@ -123,7 +124,7 @@ class SketchToolbar extends StatelessWidget {
               const SizedBox(width: 12),
               // Highlight mode toggle
               _buildToolbarButton(
-                icon: Icons.highlight,
+                icon: LucideIcons.highlighter,
                 isSelected: isHighlightMode,
                 tooltip: 'Toggle Highlight Mode',
                 onPressed: onToggleHighlightMode,
@@ -133,7 +134,7 @@ class SketchToolbar extends StatelessWidget {
               const SizedBox(width: 12),
               // Text mode toggle (text icon)
               _buildToolbarButton(
-                icon: Icons.text_fields,
+                icon: LucideIcons.type,
                 isSelected: isTextMode,
                 tooltip: 'Toggle Text Mode',
                 onPressed: onToggleTextMode,

@@ -21,7 +21,7 @@ class MyApp extends StatelessWidget {
         fontFamily: 'SF Pro Display', // iOS-style font
         appBarTheme: const AppBarTheme(
           elevation: 0,
-          centerTitle: true,
+          centerTitle: false,
           titleTextStyle: TextStyle(
             fontSize: 22,
             fontWeight: FontWeight.w600,
@@ -60,12 +60,14 @@ class SketchpadExamplePage extends StatefulWidget {
 
 class _SketchpadExamplePageState extends State<SketchpadExamplePage> {
   List<SketchInsert> inserts = [];
-  int currentSection = 0;
 
   // Undo/Redo functionality
   List<List<SketchInsert>> history = [];
   int historyIndex = -1;
   bool isUndoRedoOperation = false;
+
+  // Scroll control - set to true when specific annotation tools are active (drawing, text, highlight)
+  bool isAnnotationToolActive = false;
 
   @override
   void initState() {
@@ -132,166 +134,76 @@ class _SketchpadExamplePageState extends State<SketchpadExamplePage> {
     return Scaffold(
       backgroundColor: isDark ? Colors.grey[900] : Colors.grey[50],
       appBar: AppBar(
-        title: Text(
-          'Sketchpad',
-          style: TextStyle(
-            color: isDark ? Colors.white : Colors.black,
-            fontWeight: FontWeight.w700,
-            fontSize: 28,
+        title: GestureDetector(
+          onTap: () => _showInsertsList(context),
+          child: Text(
+            'Sketchpad',
+            style: TextStyle(
+              color: isDark ? Colors.white : Colors.black,
+              fontWeight: FontWeight.w700,
+              fontSize: 28,
+            ),
           ),
         ),
         backgroundColor: isDark ? Colors.grey[900] : Colors.grey[50],
         elevation: 0,
-        centerTitle: true,
-      ),
-      body: Column(
-        children: [
-          // Toolbar below app bar
+        centerTitle: false,
+        actions: [
+          // Undo button
           Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: isDark ? Colors.grey[850] : Colors.white,
-              border: Border(
-                bottom: BorderSide(
-                  color: isDark ? Colors.grey[700]! : Colors.grey[200]!,
-                  width: 0.5,
-                ),
+            margin: const EdgeInsets.only(right: 8),
+            child: IconButton(
+              onPressed: canUndo ? _undo : null,
+              icon: Icon(
+                Icons.undo_rounded,
+                color: canUndo ? Colors.orange[600] : Colors.grey[400],
+                size: 24,
               ),
-            ),
-            child: Row(
-              children: [
-                // Drawing Tools Section
-                // Undo button
-                Container(
-                  margin: const EdgeInsets.only(right: 6),
-                  child: IconButton(
-                    onPressed: canUndo ? _undo : null,
-                    icon: Icon(
-                      Icons.undo_rounded,
-                      color: canUndo ? Colors.orange[600] : Colors.grey[400],
-                      size: 20,
-                    ),
-                    style: IconButton.styleFrom(
-                      backgroundColor: canUndo
-                          ? (isDark
-                              ? Colors.orange[600]?.withValues(alpha: 0.1)
-                              : Colors.orange[50])
-                          : Colors.transparent,
-                      padding: const EdgeInsets.all(8),
-                      minimumSize: const Size(36, 36),
-                    ),
-                    tooltip: 'Undo',
-                  ),
-                ),
-
-                // Redo button
-                Container(
-                  margin: const EdgeInsets.only(right: 12),
-                  child: IconButton(
-                    onPressed: canRedo ? _redo : null,
-                    icon: Icon(
-                      Icons.redo_rounded,
-                      color: canRedo ? Colors.orange[600] : Colors.grey[400],
-                      size: 20,
-                    ),
-                    style: IconButton.styleFrom(
-                      backgroundColor: canRedo
-                          ? (isDark
-                              ? Colors.orange[600]?.withValues(alpha: 0.1)
-                              : Colors.orange[50])
-                          : Colors.transparent,
-                      padding: const EdgeInsets.all(8),
-                      minimumSize: const Size(36, 36),
-                    ),
-                    tooltip: 'Redo',
-                  ),
-                ),
-
-                // Vertical divider
-                Container(
-                  height: 24,
-                  width: 1,
-                  color: isDark ? Colors.grey[600] : Colors.grey[300],
-                  margin: const EdgeInsets.symmetric(horizontal: 6),
-                ),
-
-                // Section switcher button
-                Container(
-                  margin: const EdgeInsets.only(right: 10),
-                  child: IconButton(
-                    onPressed: _switchSection,
-                    icon: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: Colors.blue,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        'S${currentSection + 1}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                    tooltip: 'Switch Section',
-                  ),
-                ),
-
-                // Spacer to push management tools to the right
-                const Spacer(),
-
-                // Management Tools Section
-                // Inserts list button
-                Container(
-                  margin: const EdgeInsets.only(right: 6),
-                  child: IconButton(
-                    onPressed: () => _showInsertsList(context),
-                    icon: Icon(
-                      Icons.list_rounded,
-                      color: Colors.green[600],
-                      size: 20,
-                    ),
-                    style: IconButton.styleFrom(
-                      backgroundColor: isDark
-                          ? Colors.green[600]?.withValues(alpha: 0.1)
-                          : Colors.green[50],
-                      padding: const EdgeInsets.all(8),
-                      minimumSize: const Size(36, 36),
-                    ),
-                    tooltip: 'View Elements',
-                  ),
-                ),
-
-                // Clear all button
-                Container(
-                  margin: const EdgeInsets.only(right: 2),
-                  child: IconButton(
-                    onPressed: () => _showClearConfirmation(context),
-                    icon: Icon(
-                      Icons.delete_outline_rounded,
-                      color: Colors.red[400],
-                      size: 20,
-                    ),
-                    style: IconButton.styleFrom(
-                      backgroundColor: isDark
-                          ? Colors.red[400]?.withValues(alpha: 0.1)
-                          : Colors.red[50],
-                      padding: const EdgeInsets.all(8),
-                      minimumSize: const Size(36, 36),
-                    ),
-                    tooltip: 'Clear All',
-                  ),
-                ),
-              ],
+              style: IconButton.styleFrom(
+                backgroundColor: canUndo
+                    ? (isDark
+                        ? Colors.orange[600]?.withValues(alpha: 0.1)
+                        : Colors.orange[50])
+                    : Colors.transparent,
+                padding: const EdgeInsets.all(8),
+                minimumSize: const Size(40, 40),
+              ),
+              tooltip: 'Undo',
             ),
           ),
 
+          // Redo button
+          Container(
+            margin: const EdgeInsets.only(right: 16),
+            child: IconButton(
+              onPressed: canRedo ? _redo : null,
+              icon: Icon(
+                Icons.redo_rounded,
+                color: canRedo ? Colors.orange[600] : Colors.grey[400],
+                size: 24,
+              ),
+              style: IconButton.styleFrom(
+                backgroundColor: canRedo
+                    ? (isDark
+                        ? Colors.orange[600]?.withValues(alpha: 0.1)
+                        : Colors.orange[50])
+                    : Colors.transparent,
+                padding: const EdgeInsets.all(8),
+                minimumSize: const Size(40, 40),
+              ),
+              tooltip: 'Redo',
+            ),
+          ),
+        ],
+      ),
+      body: CustomScrollView(
+        // Disable scrolling when annotation tools are active
+        physics: isAnnotationToolActive
+            ? const NeverScrollableScrollPhysics()
+            : const AlwaysScrollableScrollPhysics(),
+        slivers: [
           // Main sketchpad content
-          Expanded(
+          SliverFillRemaining(
             child: Padding(
               padding: const EdgeInsets.all(20.0),
               child: Container(
@@ -311,14 +223,14 @@ class _SketchpadExamplePageState extends State<SketchpadExamplePage> {
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(20),
                   child: SketchWrapper(
-                    sectionIndex: currentSection,
+                    sectionIndex: 0,
                     inserts: inserts,
                     isSketchMode: true,
                     onSaveInsert:
                         (sectionIndex, points, strokeWidth, color, type) {
                       final insert = SketchInsert(
                         id: DateTime.now().millisecondsSinceEpoch.toString(),
-                        sectionIndex: sectionIndex,
+                        sectionIndex: 0,
                         points: points,
                         color: color,
                         strokeWidth: strokeWidth,
@@ -334,7 +246,7 @@ class _SketchpadExamplePageState extends State<SketchpadExamplePage> {
                         (sectionIndex, text, position, color, fontSize) {
                       final insert = SketchInsert(
                         id: DateTime.now().millisecondsSinceEpoch.toString(),
-                        sectionIndex: sectionIndex,
+                        sectionIndex: 0,
                         points: [],
                         color: color,
                         strokeWidth: 1.0,
@@ -393,9 +305,7 @@ class _SketchpadExamplePageState extends State<SketchpadExamplePage> {
                     child: SizedBox(
                       width: double.infinity,
                       height: double.infinity,
-                      child: inserts
-                              .where((i) => i.sectionIndex == currentSection)
-                              .isEmpty
+                      child: inserts.isEmpty
                           ? _buildEmptyState(isDark)
                           : Container(),
                     ),
@@ -484,60 +394,9 @@ class _SketchpadExamplePageState extends State<SketchpadExamplePage> {
     );
   }
 
-  void _switchSection() {
-    setState(() {
-      currentSection = (currentSection + 1) % 3;
-    });
-    _showSuccessHaptic();
-  }
-
   void _showSuccessHaptic() {
     // Add haptic feedback for better UX
     // HapticFeedback.lightImpact();
-  }
-
-  void _showClearConfirmation(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        title: const Text(
-          'Clear All',
-          style: TextStyle(fontWeight: FontWeight.w600),
-        ),
-        content: const Text(
-          'Are you sure you want to clear all sketches and annotations?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text(
-              'Cancel',
-              style: TextStyle(color: Colors.grey[600]),
-            ),
-          ),
-          TextButton(
-            onPressed: () {
-              setState(() {
-                inserts.clear();
-              });
-              _saveToHistory(); // Save to history after clearing
-              Navigator.of(context).pop();
-              _showSuccessHaptic();
-            },
-            child: const Text(
-              'Clear',
-              style: TextStyle(
-                color: Colors.red,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   void _showInsertsList(BuildContext context) {
@@ -593,26 +452,33 @@ class _SketchpadExamplePageState extends State<SketchpadExamplePage> {
                 _showDetailedInsertsList(context);
               },
             ),
-            if (inserts.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.red.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(Icons.delete_outline_rounded,
-                      color: Colors.red),
+            const SizedBox(height: 8),
+            ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                title: const Text('Clear All'),
-                trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  _showClearConfirmation(context);
-                },
+                child: const Icon(Icons.refresh_rounded, color: Colors.blue),
               ),
-            ],
+              title: Text(
+                'Refresh All',
+                style: TextStyle(
+                  color: Colors.blue[600],
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16),
+              onTap: () {
+                Navigator.of(context).pop();
+                setState(() {
+                  inserts.clear();
+                });
+                _saveToHistory();
+                _showSuccessHaptic();
+              },
+            ),
             const SizedBox(height: 20),
           ],
         ),
@@ -632,8 +498,12 @@ class _SketchpadExamplePageState extends State<SketchpadExamplePage> {
             _saveToHistory(); // Save to history after deleting
             _showSuccessHaptic();
           },
-          onClearAll: () {
-            _showClearConfirmation(context);
+          onRefreshAll: () {
+            setState(() {
+              inserts.clear();
+            });
+            _saveToHistory();
+            _showSuccessHaptic();
           },
         ),
       ),
@@ -644,13 +514,13 @@ class _SketchpadExamplePageState extends State<SketchpadExamplePage> {
 class SketchElementsListPage extends StatefulWidget {
   final List<SketchInsert> inserts;
   final Function(int) onInsertDeleted;
-  final VoidCallback onClearAll;
+  final VoidCallback onRefreshAll;
 
   const SketchElementsListPage({
     super.key,
     required this.inserts,
     required this.onInsertDeleted,
-    required this.onClearAll,
+    required this.onRefreshAll,
   });
 
   @override
@@ -677,12 +547,12 @@ class _SketchElementsListPageState extends State<SketchElementsListPage> {
           TextButton(
             onPressed: () {
               Navigator.of(context).pop();
-              widget.onClearAll();
+              widget.onRefreshAll();
             },
             child: Text(
-              'Clear All',
+              'Refresh All',
               style: TextStyle(
-                color: Colors.red[400],
+                color: Colors.blue[600],
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -748,7 +618,6 @@ class _SketchElementsListPageState extends State<SketchElementsListPage> {
                             : 'Drawing (${insert.points.length} points)',
                         style: const TextStyle(fontWeight: FontWeight.w500),
                       ),
-                      subtitle: Text('Section ${insert.sectionIndex + 1}'),
                       trailing: IconButton(
                         onPressed: () {
                           // Find the original index in the main inserts list

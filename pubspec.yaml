@@ -9,6 +9,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_lucide: ^1.6.2
   freezed_annotation: ^2.4.1
   json_annotation: ^4.9.0
 

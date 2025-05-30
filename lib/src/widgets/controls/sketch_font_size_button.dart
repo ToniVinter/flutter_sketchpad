@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import 'sketch_settings_overlay.dart';
 
 class SketchFontSizeButton extends StatelessWidget {
@@ -34,10 +35,15 @@ class SketchFontSizeButton extends StatelessWidget {
                 color: Colors.grey.withAlpha(77),
               ),
             ),
-            child: Icon(
-              Icons.text_fields,
-              size: fontSize.clamp(12.0, 20.0),
-              color: Colors.white,
+            child: Center(
+              child: Text(
+                '${fontSize.toInt()}',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
             ),
           ),
         ),
@@ -52,7 +58,7 @@ class SketchFontSizeButton extends StatelessWidget {
           color: isSelected
               ? Theme.of(ctx).colorScheme.primary.withAlpha(51)
               : Colors.grey.withAlpha(51),
-          borderRadius: BorderRadius.circular(8),
+          shape: BoxShape.circle,
           border: Border.all(
             color: isSelected
                 ? Theme.of(ctx).colorScheme.primary
@@ -61,13 +67,17 @@ class SketchFontSizeButton extends StatelessWidget {
           ),
         ),
         child: Center(
-          child: Text(
-            'A',
-            style: TextStyle(
-              fontSize: size.clamp(10.0, 18.0),
-              fontWeight: FontWeight.bold,
-              color:
-                  isSelected ? Theme.of(ctx).colorScheme.primary : Colors.grey,
+          child: Material(
+            color: Colors.transparent,
+            child: Text(
+              '${size.toInt()}',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: isSelected
+                    ? Theme.of(ctx).colorScheme.primary
+                    : Colors.white,
+              ),
             ),
           ),
         ),
