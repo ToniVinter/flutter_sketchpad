@@ -1,17 +1,35 @@
 import 'package:flutter/material.dart';
 import 'sketch_settings_overlay.dart';
 
-class SketchColorButton extends StatelessWidget {
+class SketchColorButton extends StatefulWidget {
   const SketchColorButton({
-    required this.color,
-    required this.selectedColor,
     required this.onColorSelected,
+    this.initialColor = Colors.black,
     super.key,
   });
 
-  final Color color;
-  final Color selectedColor;
+  final Color initialColor;
   final ValueChanged<Color> onColorSelected;
+
+  @override
+  State<SketchColorButton> createState() => _SketchColorButtonState();
+}
+
+class _SketchColorButtonState extends State<SketchColorButton> {
+  late Color _selectedColor;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedColor = widget.initialColor;
+  }
+
+  void _onColorSelected(Color color) {
+    setState(() {
+      _selectedColor = color;
+    });
+    widget.onColorSelected(color);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -46,7 +64,7 @@ class SketchColorButton extends StatelessWidget {
               width: 24,
               height: 24,
               decoration: BoxDecoration(
-                color: color,
+                color: _selectedColor,
                 shape: BoxShape.circle,
                 border: Border.all(
                   color: Colors.grey.withAlpha(77),
@@ -57,8 +75,8 @@ class SketchColorButton extends StatelessWidget {
         ),
       ),
       options: colors,
-      selectedOption: selectedColor,
-      onOptionSelected: onColorSelected,
+      selectedOption: _selectedColor,
+      onOptionSelected: _onColorSelected,
       optionBuilder: (ctx, c, isSelected) => Container(
         width: 32,
         height: 32,

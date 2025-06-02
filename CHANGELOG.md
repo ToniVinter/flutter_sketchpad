@@ -17,29 +17,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ⚙️ **Flexible Toolbar**: Customizable toolbar with 6 positioning options
 - 📱 **Touch Optimized**: Smooth touch interactions and gesture handling
 - 💾 **JSON Serialization**: Complete serialization support for persistence
-- 🔧 **Section-Based Organization**: Organize annotations by content sections
+- 🔧 **Multi-Canvas Support**: Multiple annotation areas with shared toolbar
 - 🎯 **Performance Optimized**: Efficient rendering and memory management
+- ⏪ **Built-in History**: Automatic undo/redo with configurable limits
 
 ### Core Widgets
-- `SketchWrapper`: All-in-one widget with built-in toolbar
+- `MultiCanvasSketchWrapper`: Main widget with multi-canvas support and built-in toolbar
+- `MultiCanvasRegion`: Individual annotation regions that connect to the wrapper
 - `SketchCanvas`: Drawing canvas for custom implementations
 - `SketchToolbar`: Standalone toolbar component
-- `SketchColorButton`: Color selection control
-- `SketchStrokeWidthButton`: Stroke width selection control
-- `SketchFontSizeButton`: Font size selection control
-- `SketchSettingsOverlay`: Customizable settings overlay
+
+### Controllers
+- `MultiCanvasSketchController`: Unified controller for sketch state and history management
 
 ### Data Models
 - `SketchInsert`: Core data model for sketch elements
 - `SketchInsertType`: Enum for drawing vs text annotations
+- `SketchMode`: Enum for drawing modes (none, drawing, text, highlighter)
 - `SketchToolbarPosition`: Enum for toolbar positioning
 
 ### Features
 - Smooth drawing with optimized path rendering
 - Real-time eraser with collision detection
 - Draggable and editable text annotations
-- Multi-section support for complex documents
-- Complete undo/redo capabilities
+- Multi-canvas support for complex documents
+- Built-in undo/redo with automatic state management
 - Bounds checking for drawing areas
 - Auto-save functionality
 - Cross-platform compatibility

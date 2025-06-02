@@ -2,17 +2,35 @@ import 'package:flutter/material.dart';
 
 import 'sketch_settings_overlay.dart';
 
-class SketchFontSizeButton extends StatelessWidget {
+class SketchFontSizeButton extends StatefulWidget {
   const SketchFontSizeButton({
-    required this.fontSize,
-    required this.selectedFontSize,
     required this.onFontSizeSelected,
+    this.initialFontSize = 16.0,
     super.key,
   });
 
-  final double fontSize;
-  final double selectedFontSize;
+  final double initialFontSize;
   final ValueChanged<double> onFontSizeSelected;
+
+  @override
+  State<SketchFontSizeButton> createState() => _SketchFontSizeButtonState();
+}
+
+class _SketchFontSizeButtonState extends State<SketchFontSizeButton> {
+  late double _selectedFontSize;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedFontSize = widget.initialFontSize;
+  }
+
+  void _onFontSizeSelected(double fontSize) {
+    setState(() {
+      _selectedFontSize = fontSize;
+    });
+    widget.onFontSizeSelected(fontSize);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -37,7 +55,7 @@ class SketchFontSizeButton extends StatelessWidget {
             ),
             child: Center(
               child: Text(
-                '${fontSize.toInt()}',
+                '${_selectedFontSize.toInt()}',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
@@ -49,8 +67,8 @@ class SketchFontSizeButton extends StatelessWidget {
         ),
       ),
       options: fontSizes,
-      selectedOption: selectedFontSize,
-      onOptionSelected: onFontSizeSelected,
+      selectedOption: _selectedFontSize,
+      onOptionSelected: _onFontSizeSelected,
       optionBuilder: (ctx, size, isSelected) => Container(
         width: 40,
         height: 32,

@@ -3,501 +3,261 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/sketch_insert.dart';
 import '../models/sketch_painter.dart';
+import '../models/sketch_mode.dart';
 
 class SketchCanvas extends StatefulWidget {
   const SketchCanvas({
     required this.sectionIndex,
     required this.child,
     required this.inserts,
-    required this.isSketchMode,
-    required this.isDrawingMode,
-    required this.isHighlightMode,
-    required this.isTextMode,
-    required this.isEraserMode,
+    required this.mode,
     required this.selectedColor,
     required this.selectedStrokeWidth,
     required this.selectedFontSize,
     required this.onSaveInsert,
-    required this.onSaveTextInsert,
     required this.onUpdateTextInsert,
-    required this.onUpdateTextPosition,
-    required this.onEraseInsertAt,
+    // required this.onEraseInsertAt,  // Future version
     super.key,
   });
 
   final int sectionIndex;
   final Widget child;
   final List<SketchInsert> inserts;
-  final bool isSketchMode;
-  final bool isDrawingMode;
-  final bool isHighlightMode;
-  final bool isTextMode;
-  final bool isEraserMode;
+  final SketchMode mode;
   final Color selectedColor;
   final double selectedStrokeWidth;
   final double selectedFontSize;
-  final void Function(int sectionIndex, List<Offset> points, double strokeWidth,
-      Color color, SketchInsertType type) onSaveInsert;
-  final void Function(int sectionIndex, String text, Offset position,
-      Color color, double fontSize) onSaveTextInsert;
-  final void Function(String id, String text) onUpdateTextInsert;
-  final void Function(String id, Offset position) onUpdateTextPosition;
-  final void Function(int sectionIndex, Offset position, double size)
-      onEraseInsertAt;
+  final void Function(SketchInsert insert) onSaveInsert;
+  final void Function(String id, String text, Offset position)
+      onUpdateTextInsert;
+  // final void Function(int sectionIndex, Offset position, double size)
+  //     onEraseInsertAt;  // Future version
 
   @override
   State<SketchCanvas> createState() => _SketchCanvasState();
 }
 
 class _SketchCanvasState extends State<SketchCanvas> {
-  final List<Offset> _currentDrawingPoints = [];
-  bool _isDrawing = false;
-  bool _isOutsideBounds = false;
-
-  String? _editingTextId;
-  final TextEditingController _textController = TextEditingController();
-  final FocusNode _textFocusNode = FocusNode();
-  Offset? _newTextPosition;
-  bool _isEditingText = false;
-  Offset? _dragStartPosition;
-  String? _draggingTextId;
-
-  final GlobalKey _textFieldKey = GlobalKey();
+  late final DrawingController _drawingController;
+  late final TextController _textController;
 
   @override
   void initState() {
     super.initState();
-    _textFocusNode.addListener(_onFocusChange);
+    _drawingController = DrawingController(
+      onSaveInsert: widget.onSaveInsert,
+      // onEraseInsertAt: widget.onEraseInsertAt,  // Future version
+      onStateChanged: _handleStateChanged,
+    );
+    _textController = TextController(
+      onSaveInsert: widget.onSaveInsert,
+      onUpdateTextInsert: widget.onUpdateTextInsert,
+      onStateChanged: _handleStateChanged,
+    );
+    _textController.initialize();
   }
 
   @override
   void dispose() {
+    _drawingController.dispose();
     _textController.dispose();
-    _textFocusNode
-      ..removeListener(_onFocusChange)
-      ..dispose();
     super.dispose();
   }
 
-  void _onFocusChange() {
-    // When the text field gains focus, scroll it into view.
-    if (_textFocusNode.hasFocus && _isEditingText) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        final ctx = _textFieldKey.currentContext;
-        if (ctx != null) {
-          Scrollable.ensureVisible(
-            ctx,
-            duration: const Duration(milliseconds: 350),
-            curve: Curves.easeInOut,
-            alignment: 0.3,
-          );
-        }
-      });
-    }
-    // When focus is lost, save the insert
-    if (!_textFocusNode.hasFocus && _isEditingText) {
-      _saveTextInsert();
-    }
-  }
+  SketchMode get _currentMode => widget.mode;
 
-  void _startDrawing(Offset position) {
-    setState(() {
-      _currentDrawingPoints
-        ..clear()
-        ..add(position);
-      _isDrawing = true;
-      _isOutsideBounds = false;
-    });
-  }
-
-  void _continueDrawing(Offset position) {
-    if (!_isDrawing) return;
-
-    setState(() {
-      _currentDrawingPoints.add(position);
-    });
-  }
-
-  void _onPointerMoveForDrawing(Offset position) {
-    if (!_isDrawing) return;
-
-    // Check if the point is within bounds
-    final isWithinBounds = _isWithinBounds(position, context);
-
-    if (isWithinBounds && _isOutsideBounds) {
-      // Coming back inside after being outside - save current drawing and start a new one
-      _finishCurrentDrawing();
-      _startDrawing(position);
-    } else if (isWithinBounds) {
-      // Normal drawing within bounds
-      _continueDrawing(position);
-    } else if (!_isOutsideBounds) {
-      // Just went outside - save current drawing
-      setState(() {
-        _isOutsideBounds = true;
-      });
-      _finishCurrentDrawing();
-    }
-  }
-
-  void _finishCurrentDrawing() {
-    if (!_isDrawing || _currentDrawingPoints.isEmpty) return;
-
-    // Save the drawing if there are points
-    if (_currentDrawingPoints.length > 1) {
-      final strokeWidth = widget.isHighlightMode
-          ? widget.selectedStrokeWidth * 2
-          : widget.selectedStrokeWidth;
-      final color = widget.isHighlightMode
-          ? widget.selectedColor.withValues(alpha: 0.3)
-          : widget.selectedColor;
-      final type = widget.isHighlightMode
-          ? SketchInsertType.drawing // Could add highlight type later
-          : SketchInsertType.drawing;
-
-      widget.onSaveInsert(
-        widget.sectionIndex,
-        List<Offset>.from(_currentDrawingPoints),
-        strokeWidth,
-        color,
-        type,
-      );
-    }
-
-    setState(_currentDrawingPoints.clear);
-  }
-
-  void _finishDrawing() {
-    if (!_isDrawing) return;
-
-    _finishCurrentDrawing();
-
-    setState(() {
-      _isDrawing = false;
-      _isOutsideBounds = false;
-    });
-  }
-
-  void _eraseAtPosition(Offset position) {
-    final eraserSize = widget.selectedStrokeWidth * 2;
-    widget.onEraseInsertAt(
-      widget.sectionIndex,
-      position,
-      eraserSize,
-    );
-  }
-
-  void _startNewTextInsert(Offset position) {
-    setState(() {
-      _newTextPosition = position;
-      _textController.clear();
-      _isEditingText = true;
-      _editingTextId = null;
-    });
-
-    // Focus the text field after the build cycle completes
-    Future.delayed(
-      const Duration(milliseconds: 50),
-      _textFocusNode.requestFocus,
-    );
-  }
-
-  void _editExistingTextInsert(SketchInsert insert) {
-    setState(() {
-      _newTextPosition = insert.textPosition;
-      _textController.text = insert.text ?? '';
-      _isEditingText = true;
-      _editingTextId = insert.id;
-    });
-
-    // Focus the text field after the build cycle completes
-    Future.delayed(
-      const Duration(milliseconds: 50),
-      _textFocusNode.requestFocus,
-    );
-  }
-
-  void _saveTextInsert() {
-    final text = _textController.text.trim();
-
-    if (_editingTextId != null) {
-      // Update existing text insert
-      widget.onUpdateTextInsert(_editingTextId!, text);
-    } else if (_newTextPosition != null) {
-      // Create new text insert
-      widget.onSaveTextInsert(
-        widget.sectionIndex,
-        text,
-        _newTextPosition!,
-        widget.selectedColor,
-        widget.selectedFontSize,
-      );
-    }
-
-    setState(() {
-      _isEditingText = false;
-      _newTextPosition = null;
-      _editingTextId = null;
-      _textController.clear();
-    });
-  }
-
-  void _startDraggingText(String id, Offset position) {
-    setState(() {
-      _draggingTextId = id;
-      _dragStartPosition = position;
-    });
-  }
-
-  void _updateDraggingTextPosition(Offset position) {
-    if (_draggingTextId == null || _dragStartPosition == null) return;
-    // Ensure we have canvas bounds
-    final size = context.size;
-    if (size == null) return;
-
-    // Find the insert
-    final insertList = widget.inserts
-        .where(
-          (a) => a.id == _draggingTextId,
-        )
-        .toList();
-
-    if (insertList.isEmpty) return;
-
-    final insert = insertList.first;
-    if (insert.textPosition == null) return;
-
-    // Calculate the delta from drag start
-    final delta = position - _dragStartPosition!;
-
-    // Apply the delta to the text position
-    final rawPosition = insert.textPosition! + delta;
-    // Clamp to within canvas bounds
-    final clampedDx = rawPosition.dx.clamp(0.0, size.width);
-    final clampedDy = rawPosition.dy.clamp(0.0, size.height);
-    final newPosition = Offset(clampedDx, clampedDy);
-
-    // Update the drag start position for the next frame
-    setState(() {
-      _dragStartPosition = position;
-    });
-
-    // Update the position
-    widget.onUpdateTextPosition(_draggingTextId!, newPosition);
-  }
-
-  void _stopDraggingText() {
-    setState(() {
-      _draggingTextId = null;
-      _dragStartPosition = null;
-    });
-  }
+  List<SketchInsert> get _sectionInserts => widget.inserts
+      .where((insert) => insert.sectionIndex == widget.sectionIndex)
+      .toList();
 
   @override
   Widget build(BuildContext context) {
-    // Unfocus (and trigger save via focus change) when text mode is turned off
-    if (!widget.isTextMode && _isEditingText) {
+    // Update text controller context (without canvas size)
+    _textController.updateContext(
+      sectionIndex: widget.sectionIndex,
+      selectedColor: widget.selectedColor,
+      selectedFontSize: widget.selectedFontSize,
+      inserts: widget.inserts,
+    );
+
+    // Handle text mode changes
+    if (widget.mode != SketchMode.text && _textController.isEditingText) {
       FocusScope.of(context).unfocus();
     }
 
-    // Filter inserts for this specific section
-    final sectionInserts = widget.inserts
-        .where((a) => a.sectionIndex == widget.sectionIndex)
-        .toList();
-
-    // Main widget with text mode handling
-    final Widget mainWidget = Stack(
+    return Stack(
       clipBehavior: Clip.none,
       children: [
-        // The wrapped child widget
         widget.child,
-
-        // Drawing canvas layer - Always visible
-        Positioned.fill(
-          child: ClipRect(
-            child: Stack(
-              children: [
-                // Always visible drawing layer
-                CustomPaint(
-                  painter: SketchInsertPainter(
-                    inserts: sectionInserts,
-                    currentPoints:
-                        _isDrawing ? _currentDrawingPoints : const [],
-                    currentStrokeWidth: widget.isHighlightMode
-                        ? widget.selectedStrokeWidth * 2
-                        : widget.selectedStrokeWidth,
-                    currentColor: widget.isHighlightMode
-                        ? widget.selectedColor.withAlpha(77)
-                        : widget.selectedColor,
-                  ),
-                  child: Container(color: Colors.transparent),
-                ),
-
-                if (widget.isSketchMode &&
-                    (widget.isDrawingMode ||
-                        widget.isHighlightMode ||
-                        widget.isTextMode))
-                  Positioned.fill(
-                    child: GestureDetector(
-                      onPanStart:
-                          (widget.isDrawingMode || widget.isHighlightMode) &&
-                                  !widget.isTextMode
-                              ? (details) {
-                                  final localPosition = details.localPosition;
-                                  // Ensure the point is within bounds
-                                  if (_isWithinBounds(localPosition, context)) {
-                                    if (widget.isEraserMode) {
-                                      _eraseAtPosition(localPosition);
-                                    } else {
-                                      _startDrawing(localPosition);
-                                    }
-                                  }
-                                }
-                              : null,
-                      onPanUpdate: (widget.isDrawingMode ||
-                                  widget.isHighlightMode) &&
-                              !widget.isTextMode
-                          ? (details) {
-                              final localPosition = details.localPosition;
-
-                              if (widget.isEraserMode) {
-                                // For eraser, only apply when within bounds
-                                if (_isWithinBounds(localPosition, context)) {
-                                  _eraseAtPosition(localPosition);
-                                }
-                              } else {
-                                _onPointerMoveForDrawing(localPosition);
-                              }
-                            }
-                          : null,
-                      onPanEnd:
-                          (widget.isDrawingMode || widget.isHighlightMode) &&
-                                  !widget.isTextMode
-                              ? (_) => _finishDrawing()
-                              : null,
-                      onTapDown: widget.isTextMode
-                          ? (details) {
-                              final localPosition = details.localPosition;
-                              // If already editing text, just unfocus to save it
-                              if (_isEditingText) {
-                                // This will trigger _saveTextInsert via the focus listener
-                                FocusScope.of(context).unfocus();
-                                return;
-                              }
-
-                              // Only create new text when not already editing
-                              // Ensure the text is created within bounds
-                              if (_isWithinBounds(localPosition, context)) {
-                                _startNewTextInsert(localPosition);
-                              }
-                            }
-                          : null,
-                      child: Container(color: Colors.transparent),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
-
-        // Display existing text inserts
-        ...sectionInserts
-            .where((a) => a.type == SketchInsertType.text)
-            .map((textInsert) {
-          if (_editingTextId == textInsert.id) {
-            return const SizedBox.shrink(); // Don't show while editing
-          }
-
-          return Positioned(
-            left: textInsert.textPosition?.dx ?? 0,
-            top: textInsert.textPosition?.dy ?? 0,
-            child: GestureDetector(
-              // Only enable interaction when in text mode and sketch mode is on
-              onTap: (widget.isSketchMode && widget.isTextMode)
-                  ? () => _editExistingTextInsert(textInsert)
-                  : null,
-              onPanStart: (widget.isSketchMode && widget.isTextMode)
-                  ? (details) => _startDraggingText(
-                        textInsert.id,
-                        details.globalPosition,
-                      )
-                  : null,
-              onPanUpdate: (widget.isSketchMode &&
-                      widget.isTextMode &&
-                      _draggingTextId == textInsert.id)
-                  ? (details) =>
-                      _updateDraggingTextPosition(details.globalPosition)
-                  : null,
-              onPanEnd: (widget.isSketchMode && widget.isTextMode)
-                  ? (_) => _stopDraggingText()
-                  : null,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                child: Text(
-                  textInsert.text ?? '',
-                  style: TextStyle(
-                    color: textInsert.color,
-                    fontSize: textInsert.fontSize ?? 16,
-                  ),
-                ),
-              ),
-            ),
-          );
-        }),
-
-        // Text editing widget (shown when creating or editing text)
-        if (widget.isSketchMode && _isEditingText && _newTextPosition != null)
-          Positioned(
-            left: _newTextPosition!.dx,
-            top: _newTextPosition!.dy,
-            child: IntrinsicWidth(
-              child: Container(
-                constraints: const BoxConstraints(minWidth: 20, maxWidth: 150),
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.white10,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: TextField(
-                  key: _textFieldKey,
-                  controller: _textController,
-                  focusNode: _textFocusNode,
-                  textInputAction: TextInputAction.done,
-                  decoration: const InputDecoration(
-                    isDense: true,
-                    border: InputBorder.none,
-                  ),
-                  style: TextStyle(
-                    color: widget.selectedColor,
-                    fontSize: widget.selectedFontSize,
-                  ),
-                  minLines: 1,
-                  maxLines: 5,
-                  onEditingComplete: _saveTextInsert,
-                ),
-              ),
-            ),
-          ),
+        _buildDrawingLayer(),
+        _buildInteractionLayer(),
+        _buildTextInserts(),
+        _buildTextEditor(),
       ],
     );
-
-    // If in text mode, wrap with a gesture detector to handle taps anywhere
-    if (widget.isSketchMode && widget.isTextMode && _isEditingText) {
-      return GestureDetector(
-        behavior: HitTestBehavior.translucent,
-        onTap: () {
-          // Unfocus any active text field when tapping outside
-          FocusScope.of(context).unfocus();
-        },
-        child: mainWidget,
-      );
-    }
-
-    return mainWidget;
   }
 
-  // Helper method to check if a point is within the section bounds
-  bool _isWithinBounds(Offset position, BuildContext context) {
+  Widget _buildDrawingLayer() {
+    return Positioned.fill(
+      child: ClipRect(
+        child: CustomPaint(
+          painter: SketchInsertPainter(
+            inserts: _sectionInserts,
+            currentPoints: _drawingController.currentDrawingPoints,
+            currentStrokeWidth: _getStrokeWidth(),
+            currentColor: _getDrawingColor(),
+          ),
+          child: Container(color: Colors.transparent),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInteractionLayer() {
+    final mode = _currentMode;
+    if (mode == SketchMode.none) return const SizedBox.shrink();
+
+    return Positioned.fill(
+      child: GestureDetector(
+        onPanStart: _shouldHandleDrawing(mode) ? _handlePanStart : null,
+        onPanUpdate: _shouldHandleDrawing(mode) ? _handlePanUpdate : null,
+        onPanEnd: _shouldHandleDrawing(mode) ? _handlePanEnd : null,
+        onTapDown: mode == SketchMode.text ? _handleTextTap : null,
+        child: Container(color: Colors.transparent),
+      ),
+    );
+  }
+
+  Widget _buildTextInserts() {
+    final textInserts = _sectionInserts
+        .where((insert) => insert.type == SketchInsertType.text)
+        .where((insert) => !_textController.isEditing(insert.id));
+
+    if (textInserts.isEmpty) return const SizedBox.shrink();
+
+    return Positioned.fill(
+      child: Stack(
+        children: textInserts
+            .map((insert) => TextInsertWidget(
+                  key: ValueKey(insert.id),
+                  insert: insert,
+                  isInteractive: _currentMode == SketchMode.text,
+                  onTap: () => _textController.editExisting(insert),
+                  onDragStart: (position) =>
+                      _textController.startDragging(insert.id, position),
+                  onDragUpdate: (position) => _textController
+                      .updateDragPosition(position, context.size),
+                  onDragEnd: _textController.stopDragging,
+                ))
+            .toList(),
+      ),
+    );
+  }
+
+  Widget _buildTextEditor() {
+    if (!_textController.isEditingText) return const SizedBox.shrink();
+
+    return TextEditorWidget(
+      position: _textController.editPosition!,
+      controller: _textController.textEditingController,
+      focusNode: _textController.focusNode,
+      color: widget.selectedColor,
+      fontSize: widget.selectedFontSize,
+      onComplete: _textController.saveText,
+      onTapOutside: () => FocusScope.of(context).unfocus(),
+    );
+  }
+
+  bool _shouldHandleDrawing(SketchMode mode) {
+    return mode == SketchMode.drawing || mode == SketchMode.highlighting;
+    // mode == SketchMode.eraser;  // Future version
+  }
+
+  void _handlePanStart(DragStartDetails details) {
+    final position = details.localPosition;
+    if (!_isWithinBounds(position)) return;
+
+    // if (_currentMode == SketchMode.eraser) {
+    //   _drawingController.eraseAt(
+    //     widget.sectionIndex,
+    //     position,
+    //     widget.selectedStrokeWidth * 2,
+    //   );
+    // } else {
+    _drawingController.startDrawing(position);
+    // }
+  }
+
+  void _handlePanUpdate(DragUpdateDetails details) {
+    final position = details.localPosition;
+
+    // if (_currentMode == SketchMode.eraser) {
+    //   if (_isWithinBounds(position)) {
+    //     _drawingController.eraseAt(
+    //       widget.sectionIndex,
+    //       position,
+    //       widget.selectedStrokeWidth * 2,
+    //     );
+    //   }
+    // } else {
+    // Handle drawing with proper mid-drawing saves
+    if (!_drawingController.isDrawing) return;
+
+    final isWithinBounds = _isWithinBounds(position);
+
+    if (isWithinBounds && _drawingController.isOutsideBounds) {
+      // Coming back inside after being outside - save current drawing and start a new one
+      _saveCurrentDrawingAndStartNew(position);
+    } else if (isWithinBounds) {
+      // Normal drawing within bounds
+      _drawingController.continueDrawing(position);
+    } else if (!_drawingController.isOutsideBounds) {
+      // Just went outside - save current drawing
+      _saveCurrentDrawing();
+      _drawingController.setOutsideBounds(true);
+    }
+    // }
+  }
+
+  void _handlePanEnd(DragEndDetails details) {
+    // if (_currentMode != SketchMode.eraser) {
+    _drawingController.finishDrawing(
+      widget.sectionIndex,
+      _getStrokeWidth(),
+      _getDrawingColor(),
+      _currentMode == SketchMode.highlighting
+          ? SketchInsertType.drawing
+          : SketchInsertType.drawing,
+    );
+    // }
+  }
+
+  void _handleTextTap(TapDownDetails details) {
+    final position = details.localPosition;
+
+    if (_textController.isEditingText) {
+      FocusScope.of(context).unfocus();
+      return;
+    }
+
+    if (_isWithinBounds(position)) {
+      _textController.startNewText(position);
+    }
+  }
+
+  double _getStrokeWidth() {
+    return _currentMode == SketchMode.highlighting
+        ? widget.selectedStrokeWidth * 2
+        : widget.selectedStrokeWidth;
+  }
+
+  Color _getDrawingColor() {
+    return _currentMode == SketchMode.highlighting
+        ? widget.selectedColor.withValues(alpha: 0.3)
+        : widget.selectedColor;
+  }
+
+  bool _isWithinBounds(Offset position) {
     final size = context.size;
     if (size == null) return false;
 
@@ -505,5 +265,413 @@ class _SketchCanvasState extends State<SketchCanvas> {
         position.dx <= size.width &&
         position.dy >= 0 &&
         position.dy <= size.height;
+  }
+
+  void _saveCurrentDrawing() {
+    final points = _drawingController.getCurrentPointsForSave();
+    if (points.length > 1) {
+      widget.onSaveInsert(
+        SketchInsert(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          sectionIndex: widget.sectionIndex,
+          type: _currentMode == SketchMode.highlighting
+              ? SketchInsertType.drawing
+              : SketchInsertType.drawing,
+          points: points,
+          color: _getDrawingColor(),
+          strokeWidth: _getStrokeWidth(),
+        ),
+      );
+    }
+    _drawingController.clearCurrentPoints();
+  }
+
+  void _saveCurrentDrawingAndStartNew(Offset newPosition) {
+    _saveCurrentDrawing();
+    _drawingController.startDrawing(newPosition);
+  }
+
+  void _handleStateChanged() {
+    setState(() {});
+  }
+}
+
+// Extracted drawing controller
+class DrawingController {
+  DrawingController({
+    required this.onSaveInsert,
+    // required this.onEraseInsertAt,  // Future version
+    required this.onStateChanged,
+  });
+
+  final void Function(SketchInsert insert) onSaveInsert;
+  final VoidCallback onStateChanged;
+
+  final List<Offset> _currentDrawingPoints = [];
+  bool _isDrawing = false;
+  bool _isOutsideBounds = false;
+
+  List<Offset> get currentDrawingPoints =>
+      _isDrawing ? List.unmodifiable(_currentDrawingPoints) : const [];
+
+  bool get isDrawing => _isDrawing;
+  bool get isOutsideBounds => _isOutsideBounds;
+
+  void startDrawing(Offset position) {
+    _currentDrawingPoints.clear();
+    _currentDrawingPoints.add(position);
+    _isDrawing = true;
+    _isOutsideBounds = false;
+    onStateChanged();
+  }
+
+  void continueDrawing(Offset position) {
+    if (!_isDrawing) return;
+    _currentDrawingPoints.add(position);
+    onStateChanged();
+  }
+
+  void setOutsideBounds(bool value) {
+    _isOutsideBounds = value;
+    onStateChanged();
+  }
+
+  List<Offset> getCurrentPointsForSave() {
+    return List<Offset>.from(_currentDrawingPoints);
+  }
+
+  void clearCurrentPoints() {
+    _currentDrawingPoints.clear();
+    onStateChanged();
+  }
+
+  void finishDrawing(int sectionIndex, double strokeWidth, Color color,
+      SketchInsertType type) {
+    if (!_isDrawing) return;
+
+    if (_currentDrawingPoints.length > 1) {
+      onSaveInsert(
+        SketchInsert(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          sectionIndex: sectionIndex,
+          type: type,
+          points: List<Offset>.from(_currentDrawingPoints),
+          color: color,
+          strokeWidth: strokeWidth,
+        ),
+      );
+    }
+
+    _currentDrawingPoints.clear();
+    _isDrawing = false;
+    _isOutsideBounds = false;
+    onStateChanged();
+  }
+
+  void eraseAt(int sectionIndex, Offset position, double size) {
+    // onEraseInsertAt(sectionIndex, position, size);  // Future version
+  }
+
+  void dispose() {
+    _currentDrawingPoints.clear();
+  }
+}
+
+// Extracted text controller
+class TextController {
+  TextController({
+    required this.onSaveInsert,
+    required this.onUpdateTextInsert,
+    required this.onStateChanged,
+  });
+
+  final void Function(SketchInsert insert) onSaveInsert;
+  final void Function(String id, String text, Offset position)
+      onUpdateTextInsert;
+  final VoidCallback onStateChanged;
+
+  final TextEditingController textEditingController = TextEditingController();
+  late final FocusNode focusNode;
+
+  String? _editingTextId;
+  Offset? _editPosition;
+  bool _isEditingText = false;
+  String? _draggingTextId;
+  Offset? _dragStartPosition;
+
+  // Store parent context info for callbacks
+  int? _sectionIndex;
+  Color? _selectedColor;
+  double? _selectedFontSize;
+  List<SketchInsert>? _inserts;
+
+  bool get isEditingText => _isEditingText;
+  Offset? get editPosition => _editPosition;
+  bool isEditing(String id) => _editingTextId == id;
+
+  void initialize() {
+    focusNode = FocusNode();
+    focusNode.addListener(_onFocusChange);
+  }
+
+  void updateContext({
+    required int sectionIndex,
+    required Color selectedColor,
+    required double selectedFontSize,
+    required List<SketchInsert> inserts,
+  }) {
+    _sectionIndex = sectionIndex;
+    _selectedColor = selectedColor;
+    _selectedFontSize = selectedFontSize;
+    _inserts = inserts;
+  }
+
+  void _onFocusChange() {
+    if (!focusNode.hasFocus && _isEditingText) {
+      saveText();
+    }
+  }
+
+  void startNewText(Offset position) {
+    _editPosition = position;
+    textEditingController.clear();
+    _isEditingText = true;
+    _editingTextId = null;
+    onStateChanged();
+
+    Future.delayed(
+      const Duration(milliseconds: 50),
+      focusNode.requestFocus,
+    );
+  }
+
+  void editExisting(SketchInsert insert) {
+    _editPosition = insert.textPosition;
+    textEditingController.text = insert.text ?? '';
+    _isEditingText = true;
+    _editingTextId = insert.id;
+    onStateChanged();
+
+    Future.delayed(
+      const Duration(milliseconds: 50),
+      focusNode.requestFocus,
+    );
+  }
+
+  void saveText() {
+    final text = textEditingController.text.trim();
+
+    if (_editingTextId != null) {
+      // Update existing text - this should save to history
+      onUpdateTextInsert(_editingTextId!, text, _editPosition!);
+    } else if (_editPosition != null &&
+        _sectionIndex != null &&
+        _selectedColor != null &&
+        _selectedFontSize != null) {
+      // Create new text insert
+      onSaveInsert(
+        SketchInsert(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          sectionIndex: _sectionIndex!,
+          points: [],
+          color: _selectedColor!,
+          strokeWidth: 1.0,
+          type: SketchInsertType.text,
+          text: text,
+          textPosition: _editPosition!,
+          fontSize: _selectedFontSize!,
+        ),
+      );
+    }
+
+    _reset();
+  }
+
+  void startDragging(String id, Offset position) {
+    _draggingTextId = id;
+    _dragStartPosition = position;
+  }
+
+  void updateDragPosition(Offset position, Size? canvasSize) {
+    if (_draggingTextId == null ||
+        _dragStartPosition == null ||
+        _inserts == null) return;
+
+    // Find the insert
+    final insert = _inserts!.firstWhere(
+      (insert) => insert.id == _draggingTextId,
+      orElse: () => throw StateError('Insert not found'),
+    );
+
+    if (insert.textPosition == null) return;
+
+    // Calculate the delta from drag start
+    final delta = position - _dragStartPosition!;
+
+    // Apply the delta to the text position
+    final rawPosition = insert.textPosition! + delta;
+
+    // Clamp to within canvas bounds if size is available
+    Offset newPosition;
+    if (canvasSize != null) {
+      final clampedDx = rawPosition.dx.clamp(0.0, canvasSize.width);
+      final clampedDy = rawPosition.dy.clamp(0.0, canvasSize.height);
+      newPosition = Offset(clampedDx, clampedDy);
+    } else {
+      newPosition = rawPosition;
+    }
+
+    // Update the drag start position for the next frame
+    _dragStartPosition = position;
+
+    // Update position WITHOUT saving to history
+    onUpdateTextInsert(_draggingTextId!, insert.text ?? '', newPosition);
+  }
+
+  void stopDragging() {
+    if (_draggingTextId != null) {
+      // When dragging stops, save the final position to history
+      final insert = _inserts?.firstWhere(
+        (insert) => insert.id == _draggingTextId,
+        orElse: () => throw StateError('Insert not found'),
+      );
+
+      if (insert != null && insert.textPosition != null) {
+        onUpdateTextInsert(
+            _draggingTextId!, insert.text ?? '', insert.textPosition!);
+      }
+    }
+
+    _draggingTextId = null;
+    _dragStartPosition = null;
+  }
+
+  void _reset() {
+    _isEditingText = false;
+    _editPosition = null;
+    _editingTextId = null;
+    textEditingController.clear();
+    onStateChanged();
+  }
+
+  void dispose() {
+    textEditingController.dispose();
+    focusNode
+      ..removeListener(_onFocusChange)
+      ..dispose();
+  }
+}
+
+// Extracted text insert widget
+class TextInsertWidget extends StatelessWidget {
+  const TextInsertWidget({
+    required this.insert,
+    required this.isInteractive,
+    required this.onTap,
+    required this.onDragStart,
+    required this.onDragUpdate,
+    required this.onDragEnd,
+    super.key,
+  });
+
+  final SketchInsert insert;
+  final bool isInteractive;
+  final VoidCallback onTap;
+  final void Function(Offset position) onDragStart;
+  final void Function(Offset position) onDragUpdate;
+  final VoidCallback onDragEnd;
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      left: insert.textPosition?.dx ?? 0,
+      top: insert.textPosition?.dy ?? 0,
+      child: GestureDetector(
+        onTap: isInteractive ? onTap : null,
+        onPanStart: isInteractive
+            ? (details) => onDragStart(details.globalPosition)
+            : null,
+        onPanUpdate: isInteractive
+            ? (details) => onDragUpdate(details.globalPosition)
+            : null,
+        onPanEnd: isInteractive ? (_) => onDragEnd() : null,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          child: Text(
+            insert.text ?? '',
+            style: TextStyle(
+              color: insert.color,
+              fontSize: insert.fontSize ?? 16,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// Extracted text editor widget
+class TextEditorWidget extends StatelessWidget {
+  const TextEditorWidget({
+    required this.position,
+    required this.controller,
+    required this.focusNode,
+    required this.color,
+    required this.fontSize,
+    required this.onComplete,
+    required this.onTapOutside,
+    super.key,
+  });
+
+  final Offset position;
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final Color color;
+  final double fontSize;
+  final VoidCallback onComplete;
+  final VoidCallback onTapOutside;
+
+  static const double _minWidth = 20;
+  static const double _maxWidth = 150;
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      left: position.dx,
+      top: position.dy,
+      child: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: onTapOutside,
+        child: IntrinsicWidth(
+          child: Container(
+            constraints: const BoxConstraints(
+              minWidth: _minWidth,
+              maxWidth: _maxWidth,
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.white10,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: TextField(
+              controller: controller,
+              focusNode: focusNode,
+              textInputAction: TextInputAction.done,
+              decoration: const InputDecoration(
+                isDense: true,
+                border: InputBorder.none,
+              ),
+              style: TextStyle(
+                color: color,
+                fontSize: fontSize,
+              ),
+              minLines: 1,
+              maxLines: 5,
+              onEditingComplete: onComplete,
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

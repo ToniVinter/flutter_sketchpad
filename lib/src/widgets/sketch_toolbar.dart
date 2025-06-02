@@ -5,64 +5,41 @@ import 'package:flutter_lucide/flutter_lucide.dart';
 import 'controls/sketch_color_button.dart';
 import 'controls/sketch_font_size_button.dart';
 import 'sketch_stroke_width_button.dart';
+import '../models/sketch_mode.dart';
 
 /// A toolbar that provides sketch tools for marking up content.
 class SketchToolbar extends StatelessWidget {
   /// Creates a sketch toolbar.
   const SketchToolbar({
     required this.isEnabled,
-    required this.isDrawingMode,
-    required this.isEraserMode,
-    required this.isHighlightMode,
-    required this.isTextMode,
-    required this.selectedColor,
-    required this.selectedStrokeWidth,
-    required this.selectedFontSize,
-    required this.onToggleDrawingMode,
-    required this.onToggleEraserMode,
-    required this.onToggleHighlightMode,
-    required this.onToggleTextMode,
+    required this.mode,
+    required this.onModeChanged,
     required this.onStrokeWidthSelected,
     required this.onColorSelected,
     required this.onFontSizeSelected,
+    this.initialColor = Colors.red,
+    this.initialStrokeWidth = 4.0,
+    this.initialFontSize = 16.0,
     super.key,
   });
 
   /// Whether the sketch toolbar is enabled
   final bool isEnabled;
 
-  /// Whether drawing mode is active
-  final bool isDrawingMode;
+  /// Current sketch mode
+  final SketchMode mode;
 
-  /// Whether eraser mode is active
-  final bool isEraserMode;
+  /// Initial color for color controls
+  final Color initialColor;
 
-  /// Whether highlight mode is active
-  final bool isHighlightMode;
+  /// Initial stroke width for stroke controls
+  final double initialStrokeWidth;
 
-  /// Whether text mode is active
-  final bool isTextMode;
+  /// Initial font size for font controls
+  final double initialFontSize;
 
-  /// The currently selected color
-  final Color selectedColor;
-
-  /// The currently selected stroke width
-  final double selectedStrokeWidth;
-
-  /// The currently selected font size
-  final double selectedFontSize;
-
-  /// Callback when drawing mode is toggled
-  final VoidCallback onToggleDrawingMode;
-
-  /// Callback when eraser mode is toggled
-  final VoidCallback onToggleEraserMode;
-
-  /// Callback when highlight mode is toggled
-  final VoidCallback onToggleHighlightMode;
-
-  /// Callback when text mode is toggled
-  final VoidCallback onToggleTextMode;
+  /// Callback when sketch mode changes
+  final ValueChanged<SketchMode> onModeChanged;
 
   /// Callback when stroke width is selected
   final ValueChanged<double> onStrokeWidthSelected;
@@ -107,17 +84,13 @@ class SketchToolbar extends StatelessWidget {
               // Drawing mode toggle (pen icon)
               _buildToolbarButton(
                 icon: LucideIcons.pen,
-                isSelected: isDrawingMode && !isEraserMode,
+                isSelected: mode == SketchMode.drawing,
                 tooltip: 'Toggle Drawing Mode',
-                onPressed: () {
-                  if (!isDrawingMode) {
-                    onToggleDrawingMode();
-                  } else if (isEraserMode) {
-                    onToggleEraserMode();
-                  } else {
-                    onToggleDrawingMode();
-                  }
-                },
+                onPressed: () => onModeChanged(
+                  mode == SketchMode.drawing
+                      ? SketchMode.none
+                      : SketchMode.drawing,
+                ),
                 context: context,
               ),
 
@@ -125,9 +98,13 @@ class SketchToolbar extends StatelessWidget {
               // Highlight mode toggle
               _buildToolbarButton(
                 icon: LucideIcons.highlighter,
-                isSelected: isHighlightMode,
+                isSelected: mode == SketchMode.highlighting,
                 tooltip: 'Toggle Highlight Mode',
-                onPressed: onToggleHighlightMode,
+                onPressed: () => onModeChanged(
+                  mode == SketchMode.highlighting
+                      ? SketchMode.none
+                      : SketchMode.highlighting,
+                ),
                 context: context,
               ),
 
@@ -135,70 +112,66 @@ class SketchToolbar extends StatelessWidget {
               // Text mode toggle (text icon)
               _buildToolbarButton(
                 icon: LucideIcons.type,
-                isSelected: isTextMode,
+                isSelected: mode == SketchMode.text,
                 tooltip: 'Toggle Text Mode',
-                onPressed: onToggleTextMode,
+                onPressed: () => onModeChanged(
+                  mode == SketchMode.text ? SketchMode.none : SketchMode.text,
+                ),
                 context: context,
               ),
 
               // Drawing mode controls: color & stroke width only
-              if (isDrawingMode) ...[
+              if (mode == SketchMode.drawing) ...[
                 const SizedBox(width: 12),
                 _buildDivider(),
                 const SizedBox(width: 12),
                 SketchColorButton(
-                  color: selectedColor,
-                  selectedColor: selectedColor,
+                  initialColor: initialColor,
                   onColorSelected: onColorSelected,
                 ),
                 const SizedBox(width: 12),
                 _buildDivider(),
                 const SizedBox(width: 12),
                 SketchStrokeWidthButton(
-                  width: selectedStrokeWidth,
-                  selectedStrokeWidth: selectedStrokeWidth,
-                  isHighlightMode: isHighlightMode,
+                  initialStrokeWidth: initialStrokeWidth,
+                  isHighlightMode: false,
                   onStrokeWidthSelected: onStrokeWidthSelected,
                 ),
               ],
 
               // Highlight mode controls: color & stroke width
-              if (isHighlightMode) ...[
+              if (mode == SketchMode.highlighting) ...[
                 const SizedBox(width: 12),
                 _buildDivider(),
                 const SizedBox(width: 12),
                 SketchColorButton(
-                  color: selectedColor,
-                  selectedColor: selectedColor,
+                  initialColor: initialColor,
                   onColorSelected: onColorSelected,
                 ),
                 const SizedBox(width: 12),
                 _buildDivider(),
                 const SizedBox(width: 12),
                 SketchStrokeWidthButton(
-                  width: selectedStrokeWidth + 4.0,
-                  selectedStrokeWidth: selectedStrokeWidth,
-                  isHighlightMode: isHighlightMode,
+                  initialStrokeWidth: initialStrokeWidth,
+                  isHighlightMode: true,
                   onStrokeWidthSelected: onStrokeWidthSelected,
                 ),
               ],
 
               // Text mode controls: color & font size
-              if (isTextMode) ...[
+              if (mode == SketchMode.text) ...[
                 const SizedBox(width: 12),
                 _buildDivider(),
                 const SizedBox(width: 12),
                 SketchColorButton(
-                  color: selectedColor,
-                  selectedColor: selectedColor,
+                  initialColor: initialColor,
                   onColorSelected: onColorSelected,
                 ),
                 const SizedBox(width: 12),
                 _buildDivider(),
                 const SizedBox(width: 12),
                 SketchFontSizeButton(
-                  fontSize: selectedFontSize,
-                  selectedFontSize: selectedFontSize,
+                  initialFontSize: initialFontSize,
                   onFontSizeSelected: onFontSizeSelected,
                 ),
               ],

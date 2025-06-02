@@ -2,19 +2,38 @@ import 'package:flutter/material.dart';
 
 import 'controls/sketch_settings_overlay.dart';
 
-class SketchStrokeWidthButton extends StatelessWidget {
+class SketchStrokeWidthButton extends StatefulWidget {
   const SketchStrokeWidthButton({
-    required this.width,
-    required this.selectedStrokeWidth,
     required this.onStrokeWidthSelected,
+    this.initialStrokeWidth = 4.0,
     this.isHighlightMode = false,
     super.key,
   });
 
-  final double width;
-  final double selectedStrokeWidth;
+  final double initialStrokeWidth;
   final ValueChanged<double> onStrokeWidthSelected;
   final bool isHighlightMode;
+
+  @override
+  State<SketchStrokeWidthButton> createState() =>
+      _SketchStrokeWidthButtonState();
+}
+
+class _SketchStrokeWidthButtonState extends State<SketchStrokeWidthButton> {
+  late double _selectedStrokeWidth;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedStrokeWidth = widget.initialStrokeWidth;
+  }
+
+  void _onStrokeWidthSelected(double strokeWidth) {
+    setState(() {
+      _selectedStrokeWidth = strokeWidth;
+    });
+    widget.onStrokeWidthSelected(strokeWidth);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -25,8 +44,9 @@ class SketchStrokeWidthButton extends StatelessWidget {
       followerAnchor: Alignment.bottomCenter,
       offset: const Offset(-32, -24),
       anchorBuilder: (ctx, toggleOverlay) => Tooltip(
-        message:
-            isHighlightMode ? 'Select Highlight Width' : 'Select Stroke Width',
+        message: widget.isHighlightMode
+            ? 'Select Highlight Width'
+            : 'Select Stroke Width',
         child: GestureDetector(
           onTap: toggleOverlay,
           child: Container(
@@ -43,8 +63,8 @@ class SketchStrokeWidthButton extends StatelessWidget {
               height: 16,
               child: Center(
                 child: Container(
-                  width: width.clamp(2.0, 16.0),
-                  height: width.clamp(2.0, 16.0),
+                  width: _selectedStrokeWidth.clamp(2.0, 16.0),
+                  height: _selectedStrokeWidth.clamp(2.0, 16.0),
                   decoration: const BoxDecoration(
                     color: Colors.white,
                     shape: BoxShape.circle,
@@ -56,8 +76,8 @@ class SketchStrokeWidthButton extends StatelessWidget {
         ),
       ),
       options: strokeWidths,
-      selectedOption: selectedStrokeWidth,
-      onOptionSelected: onStrokeWidthSelected,
+      selectedOption: _selectedStrokeWidth,
+      onOptionSelected: _onStrokeWidthSelected,
       optionBuilder: (ctx, strokeWidth, isSelected) => Container(
         width: 32,
         height: 32,

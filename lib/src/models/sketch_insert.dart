@@ -41,7 +41,13 @@ class ColorConverter implements JsonConverter<Color, int> {
   Color fromJson(int json) => Color(json);
 
   @override
-  int toJson(Color color) => color.value;
+  int toJson(Color color) {
+    // Use ARGB components instead of deprecated .value
+    return (color.a.round() << 24) |
+        (color.r.round() << 16) |
+        (color.g.round() << 8) |
+        color.b.round();
+  }
 }
 
 class OffsetConverter implements JsonConverter<Offset, Map<String, dynamic>> {

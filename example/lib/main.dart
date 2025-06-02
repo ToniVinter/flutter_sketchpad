@@ -61,10 +61,11 @@ class SketchpadExamplePage extends StatefulWidget {
 class _SketchpadExamplePageState extends State<SketchpadExamplePage> {
   List<SketchInsert> inserts = [];
 
-  // Undo/Redo functionality
-  List<List<SketchInsert>> history = [];
-  int historyIndex = -1;
-  bool isUndoRedoOperation = false;
+  // Single unified controller handles everything - much simpler!
+  late final MultiCanvasSketchController controller;
+
+  // Sketch mode state - now controlled by the widget
+  bool isSketchMode = false;
 
   // Scroll control - set to true when specific annotation tools are active (drawing, text, highlight)
   bool isAnnotationToolActive = false;
@@ -72,59 +73,45 @@ class _SketchpadExamplePageState extends State<SketchpadExamplePage> {
   @override
   void initState() {
     super.initState();
-    _saveToHistory(); // Save initial empty state
+
+    // Single unified controller setup
+    controller = MultiCanvasSketchController(
+      initialColor: Colors.blue,
+      initialStrokeWidth: 4.0,
+      initialFontSize: 16.0,
+      maxHistorySteps: 50,
+    );
+
+    // Only need to listen to one controller
+    controller.addListener(_onControllerChanged);
   }
 
   @override
   void dispose() {
+    controller.dispose(); // Single dispose call
     super.dispose();
   }
 
-  void _saveToHistory() {
-    if (isUndoRedoOperation) return; // Don't save during undo/redo operations
-
-    // Remove any future history if we're in the middle of the stack
-    if (historyIndex < history.length - 1) {
-      history = history.sublist(0, historyIndex + 1);
-    }
-
-    // Add current state to history
-    history.add(List<SketchInsert>.from(inserts));
-    historyIndex++;
-
-    // Limit history size to prevent memory issues
-    if (history.length > 50) {
-      history.removeAt(0);
-      historyIndex--;
-    }
+  void _onControllerChanged() {
+    setState(() {
+      // Sync inserts from controller for display purposes
+      inserts.clear();
+      inserts.addAll(controller.inserts);
+    });
   }
 
   void _undo() {
-    if (historyIndex > 0) {
-      isUndoRedoOperation = true;
-      historyIndex--;
-      setState(() {
-        inserts = List<SketchInsert>.from(history[historyIndex]);
-      });
-      isUndoRedoOperation = false;
-      _showSuccessHaptic();
-    }
+    controller.undo(); // Controller handles state internally
+    _showSuccessHaptic();
   }
 
   void _redo() {
-    if (historyIndex < history.length - 1) {
-      isUndoRedoOperation = true;
-      historyIndex++;
-      setState(() {
-        inserts = List<SketchInsert>.from(history[historyIndex]);
-      });
-      isUndoRedoOperation = false;
-      _showSuccessHaptic();
-    }
+    controller.redo(); // Controller handles state internally
+    _showSuccessHaptic();
   }
 
-  bool get canUndo => historyIndex > 0;
-  bool get canRedo => historyIndex < history.length - 1;
+  bool get canUndo => controller.canUndo;
+  bool get canRedo => controller.canRedo;
 
   @override
   Widget build(BuildContext context) {
@@ -137,7 +124,7 @@ class _SketchpadExamplePageState extends State<SketchpadExamplePage> {
         title: GestureDetector(
           onTap: () => _showInsertsList(context),
           child: Text(
-            'Sketchpad',
+            'Unified Sketchpad',
             style: TextStyle(
               color: isDark ? Colors.white : Colors.black,
               fontWeight: FontWeight.w700,
@@ -149,6 +136,33 @@ class _SketchpadExamplePageState extends State<SketchpadExamplePage> {
         elevation: 0,
         centerTitle: false,
         actions: [
+          // Sketch mode toggle
+          Container(
+            margin: const EdgeInsets.only(right: 8),
+            child: IconButton(
+              onPressed: () {
+                setState(() {
+                  isSketchMode = !isSketchMode;
+                });
+              },
+              icon: Icon(
+                isSketchMode ? Icons.edit_off : Icons.edit,
+                color: isSketchMode ? Colors.orange[600] : Colors.grey[600],
+                size: 24,
+              ),
+              style: IconButton.styleFrom(
+                backgroundColor: isSketchMode
+                    ? (isDark
+                        ? Colors.orange[600]?.withValues(alpha: 0.1)
+                        : Colors.orange[50])
+                    : Colors.transparent,
+                padding: const EdgeInsets.all(8),
+                minimumSize: const Size(40, 40),
+              ),
+              tooltip: isSketchMode ? 'Exit Sketch Mode' : 'Enter Sketch Mode',
+            ),
+          ),
+
           // Undo button
           Container(
             margin: const EdgeInsets.only(right: 8),
@@ -222,92 +236,19 @@ class _SketchpadExamplePageState extends State<SketchpadExamplePage> {
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(20),
-                  child: SketchWrapper(
-                    sectionIndex: 0,
-                    inserts: inserts,
-                    isSketchMode: true,
-                    onSaveInsert:
-                        (sectionIndex, points, strokeWidth, color, type) {
-                      final insert = SketchInsert(
-                        id: DateTime.now().millisecondsSinceEpoch.toString(),
-                        sectionIndex: 0,
-                        points: points,
-                        color: color,
-                        strokeWidth: strokeWidth,
-                        type: type,
-                      );
-                      setState(() {
-                        inserts.add(insert);
-                      });
-                      _saveToHistory(); // Save to history after adding
-                      _showSuccessHaptic();
-                    },
-                    onSaveTextInsert:
-                        (sectionIndex, text, position, color, fontSize) {
-                      final insert = SketchInsert(
-                        id: DateTime.now().millisecondsSinceEpoch.toString(),
-                        sectionIndex: 0,
-                        points: [],
-                        color: color,
-                        strokeWidth: 1.0,
-                        type: SketchInsertType.text,
-                        text: text,
-                        textPosition: position,
-                        fontSize: fontSize,
-                      );
-                      setState(() {
-                        inserts.add(insert);
-                      });
-                      _saveToHistory(); // Save to history after adding
-                      _showSuccessHaptic();
-                    },
-                    onUpdateTextInsert: (id, text) {
-                      setState(() {
-                        final index = inserts.indexWhere((i) => i.id == id);
-                        if (index != -1) {
-                          inserts[index] = inserts[index].copyWith(text: text);
-                        }
-                      });
-                    },
-                    onUpdateTextPosition: (id, position) {
-                      setState(() {
-                        final index = inserts.indexWhere((i) => i.id == id);
-                        if (index != -1) {
-                          inserts[index] =
-                              inserts[index].copyWith(textPosition: position);
-                        }
-                      });
-                    },
-                    onEraseInsertAt: (sectionIndex, position, size) {
-                      setState(() {
-                        final removedCount = inserts.length;
-                        inserts.removeWhere((insert) {
-                          if (insert.sectionIndex != sectionIndex) return false;
-
-                          if (insert.type == SketchInsertType.text &&
-                              insert.textPosition != null) {
-                            final distance =
-                                (insert.textPosition! - position).distance;
-                            return distance < size;
-                          }
-
-                          return insert.points.any((point) {
-                            final distance = (point - position).distance;
-                            return distance < size;
-                          });
-                        });
-                        if (inserts.length < removedCount) {
-                          _saveToHistory(); // Save to history after erasing
-                          _showSuccessHaptic();
-                        }
-                      });
-                    },
-                    child: SizedBox(
-                      width: double.infinity,
-                      height: double.infinity,
-                      child: inserts.isEmpty
-                          ? _buildEmptyState(isDark)
-                          : Container(),
+                  child: MultiCanvasSketchWrapper(
+                    controller: controller, // Use unified controller
+                    isEnabled: isSketchMode,
+                    toolbarPosition: SketchToolbarPosition.bottomCenter,
+                    child: MultiCanvasRegion(
+                      regionIndex: 0,
+                      child: SizedBox(
+                        width: double.infinity,
+                        height: double.infinity,
+                        child: inserts.isEmpty
+                            ? _buildEmptyState(isDark)
+                            : Container(),
+                      ),
                     ),
                   ),
                 ),
@@ -475,7 +416,6 @@ class _SketchpadExamplePageState extends State<SketchpadExamplePage> {
                 setState(() {
                   inserts.clear();
                 });
-                _saveToHistory();
                 _showSuccessHaptic();
               },
             ),
@@ -495,14 +435,12 @@ class _SketchpadExamplePageState extends State<SketchpadExamplePage> {
             setState(() {
               inserts.removeAt(index);
             });
-            _saveToHistory(); // Save to history after deleting
             _showSuccessHaptic();
           },
           onRefreshAll: () {
             setState(() {
               inserts.clear();
             });
-            _saveToHistory();
             _showSuccessHaptic();
           },
         ),

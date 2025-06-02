@@ -16,8 +16,9 @@ A powerful and flexible Flutter package for adding sketch and annotation capabil
 - ⚙️ **Customizable Toolbar**: Flexible toolbar positioning and styling
 - 📱 **Touch Optimized**: Smooth touch interactions and gesture handling
 - 💾 **Serializable**: JSON serialization support for saving/loading sketches
-- 🔧 **Section-Based**: Organize annotations by content sections
+- 🔧 **Multi-Canvas**: Support for multiple annotation areas with shared toolbar
 - 🎯 **Performance**: Optimized for smooth drawing experience
+- ⏪ **Undo/Redo**: Built-in history controller with automatic state management
 
 ## 🎥 Live Demo
 
@@ -55,75 +56,60 @@ class MySketchApp extends StatefulWidget {
 }
 
 class _MySketchAppState extends State<MySketchApp> {
-  List<SketchInsert> inserts = [];
+  late final MultiCanvasSketchController controller;
+  bool isSketchMode = false; // Widget controls sketch mode
+
+  @override
+  void initState() {
+    super.initState();
+    controller = MultiCanvasSketchController(
+      initialColor: Colors.blue,
+      initialStrokeWidth: 4.0,
+      initialFontSize: 16.0,
+      maxHistorySteps: 50,
+    );
+    controller.addListener(() {
+      setState(() {}); // Rebuild when controller state changes
+    });
+  }
+
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: SketchWrapper(
-        sectionIndex: 0,
-        inserts: inserts,
-        isSketchMode: true,
-        onSaveInsert: (sectionIndex, points) {
-          // Handle drawing insert
-          final insert = SketchInsert(
-            id: DateTime.now().millisecondsSinceEpoch.toString(),
-            sectionIndex: sectionIndex,
-            points: points,
-            color: Colors.blue,
-            strokeWidth: 3.0,
-          );
-          setState(() {
-            inserts.add(insert);
-          });
-        },
-        onSaveTextInsert: (sectionIndex, text, position) {
-          // Handle text insert
-          final insert = SketchInsert(
-            id: DateTime.now().millisecondsSinceEpoch.toString(),
-            sectionIndex: sectionIndex,
-            points: [],
-            color: Colors.black,
-            strokeWidth: 1.0,
-            type: SketchInsertType.text,
-            text: text,
-            textPosition: position,
-            fontSize: 16.0,
-          );
-          setState(() {
-            inserts.add(insert);
-          });
-        },
-        onUpdateTextInsert: (id, text) {
-          // Update text content
-          setState(() {
-            final index = inserts.indexWhere((i) => i.id == id);
-            if (index != -1) {
-              inserts[index] = inserts[index].copyWith(text: text);
-            }
-          });
-        },
-        onUpdateTextPosition: (id, position) {
-          // Update text position
-          setState(() {
-            final index = inserts.indexWhere((i) => i.id == id);
-            if (index != -1) {
-              inserts[index] = inserts[index].copyWith(textPosition: position);
-            }
-          });
-        },
-        onEraseInsertAt: (sectionIndex, position, size) {
-          // Handle erasing
-          setState(() {
-            inserts.removeWhere((insert) {
-              return insert.points.any((point) {
-                final distance = (point - position).distance;
-                return distance < size;
-              });
-            });
-          });
-        },
-        child: YourContentWidget(),
+    return MultiCanvasSketchWrapper(
+      controller: controller,
+      isEnabled: isSketchMode,
+      toolbarPosition: SketchToolbarPosition.bottomCenter,
+      child: Scaffold(
+        appBar: AppBar(
+          actions: [
+            IconButton(
+              onPressed: () {
+                setState(() {
+                  isSketchMode = !isSketchMode;
+                });
+              },
+              icon: Icon(isSketchMode ? Icons.edit_off : Icons.edit),
+            ),
+            IconButton(
+              onPressed: controller.canUndo ? () => controller.undo() : null,
+              icon: Icon(Icons.undo),
+            ),
+            IconButton(
+              onPressed: controller.canRedo ? () => controller.redo() : null,
+              icon: Icon(Icons.redo),
+            ),
+          ],
+        ),
+        body: MultiCanvasRegion(
+          regionIndex: 0,
+          child: YourContentWidget(),
+        ),
       ),
     );
   }
@@ -132,10 +118,44 @@ class _MySketchAppState extends State<MySketchApp> {
 
 ## 🎛️ Advanced Usage
 
+### Multiple Canvas Regions
+
+Create multiple annotation areas that share a single toolbar:
+
+```dart
+MultiCanvasSketchWrapper(
+  controller: controller,
+  isEnabled: isSketchMode,
+  toolbarPosition: SketchToolbarPosition.topRight,
+  child: Column(
+    children: [
+      Expanded(
+        child: MultiCanvasRegion(
+          regionIndex: 0,
+          child: Container(
+            color: Colors.blue[50],
+            child: Center(child: Text('First Section')),
+          ),
+        ),
+      ),
+      Expanded(
+        child: MultiCanvasRegion(
+          regionIndex: 1,
+          child: Container(
+            color: Colors.green[50],
+            child: Center(child: Text('Second Section')),
+          ),
+        ),
+      ),
+    ],
+  ),
+)
+```
+
 ### Custom Toolbar Positioning
 
 ```dart
-SketchWrapper(
+MultiCanvasSketchWrapper(
   // ... other properties
   toolbarPosition: SketchToolbarPosition.topRight,
   child: YourContent(),
@@ -151,27 +171,30 @@ Stack(
   children: [
     SketchCanvas(
       sectionIndex: 0,
-      inserts: inserts,
-      isSketchMode: true,
-      isDrawingMode: isDrawingMode,
-      isTextMode: isTextMode,
-      // ... other properties
+      inserts: controller.inserts,
+      mode: isSketchMode ? controller.mode : SketchMode.none,
+      selectedColor: controller.selectedColor,
+      selectedStrokeWidth: controller.selectedStrokeWidth,
+      selectedFontSize: controller.selectedFontSize,
+      onSaveInsert: (insert) => controller.upsertInsert(insert),
+      onUpdateTextInsert: (id, text, position) {
+        // Handle text updates
+      },
       child: YourContent(),
     ),
     Positioned(
       top: 50,
       right: 20,
       child: SketchToolbar(
-        isEnabled: true,
-        isDrawingMode: isDrawingMode,
-        isTextMode: isTextMode,
-        // ... other properties
-        onToggleDrawingMode: () {
-          setState(() {
-            isDrawingMode = !isDrawingMode;
-          });
-        },
-        // ... other callbacks
+        isEnabled: isSketchMode,
+        mode: controller.mode,
+        initialColor: controller.initialColor,
+        initialStrokeWidth: controller.initialStrokeWidth,
+        initialFontSize: controller.initialFontSize,
+        onModeChanged: controller.setMode,
+        onColorSelected: controller.setColor,
+        onStrokeWidthSelected: controller.setStrokeWidth,
+        onFontSizeSelected: controller.setFontSize,
       ),
     ),
   ],
@@ -181,46 +204,63 @@ Stack(
 ### Custom Colors and Styling
 
 ```dart
-SketchWrapper(
-  // ... other properties
+MultiCanvasSketchController(
   initialColor: Colors.purple,
   initialStrokeWidth: 5.0,
   initialFontSize: 18.0,
-  child: YourContent(),
+  maxHistorySteps: 100,
 )
 ```
 
-### Section-Based Organization
+### Working with Insert Data
 
-Organize your annotations by content sections:
+Access and manipulate sketch data:
 
 ```dart
-// Different sections can have different annotations
-SketchWrapper(
-  sectionIndex: 0, // First section
-  inserts: section0Inserts,
-  // ... properties
-)
+// Get all inserts
+List<SketchInsert> allInserts = controller.inserts;
 
-SketchWrapper(
-  sectionIndex: 1, // Second section
-  inserts: section1Inserts,
-  // ... properties
-)
+// Get inserts for specific region
+List<SketchInsert> regionInserts = controller.getInsertsForSection(0);
+
+// Add insert programmatically
+controller.upsertInsert(SketchInsert(
+  id: 'unique-id',
+  sectionIndex: 0,
+  type: SketchInsertType.text,
+  text: 'Programmatic text',
+  textPosition: Offset(100, 100),
+  color: Colors.red,
+  fontSize: 16.0,
+));
+
+// Remove insert
+controller.removeInsert('unique-id');
+
+// Clear all inserts
+controller.clearInserts();
 ```
 
 ## 📚 API Reference
 
 ### Core Widgets
 
-#### SketchWrapper
-The main widget that provides complete sketch functionality with built-in toolbar.
+#### MultiCanvasSketchWrapper
+The main widget that provides complete sketch functionality with built-in toolbar and support for multiple canvas regions.
+
+#### MultiCanvasRegion
+A region widget that connects to the parent MultiCanvasSketchWrapper for annotation functionality.
 
 #### SketchCanvas
 The drawing canvas without toolbar - use for custom implementations.
 
 #### SketchToolbar
 Standalone toolbar component for controlling sketch modes.
+
+### Controllers
+
+#### MultiCanvasSketchController
+Unified controller that manages sketch state, insert data, and history.
 
 ### Data Models
 
@@ -247,6 +287,13 @@ class SketchInsert {
 Enum defining the type of sketch insert:
 - `SketchInsertType.drawing` - Drawing/line annotations
 - `SketchInsertType.text` - Text annotations
+
+#### SketchMode
+Enum defining the current drawing mode:
+- `SketchMode.none` - No drawing
+- `SketchMode.drawing` - Drawing/line mode
+- `SketchMode.text` - Text annotation mode
+- `SketchMode.highlighter` - Highlighter mode
 
 ### Toolbar Positions
 
@@ -324,6 +371,89 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - 📧 **Email**: [antonio.vinterr@gmail.com]
 - 🐛 **Issues**: [GitHub Issues](https://github.com/yourusername/flutter_sketchpad/issues)
 - 💬 **Discussions**: [GitHub Discussions](https://github.com/yourusername/flutter_sketchpad/discussions)
+
+## 🎯 Multi-Canvas with Shared Toolbar
+
+For apps with multiple pages/sections (like PageView), use the multi-canvas approach:
+
+```dart
+class MyMultiPageApp extends StatefulWidget {
+  @override
+  _MyMultiPageAppState createState() => _MyMultiPageAppState();
+}
+
+class _MyMultiPageAppState extends State<MyMultiPageApp> {
+  List<SketchInsert> inserts = [];
+  late final MultiCanvasSketchController controller;
+  bool isSketchMode = false; // Widget controls sketch mode
+  final PageController pageController = PageController();
+  int currentPageIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    controller = MultiCanvasSketchController(
+      initialColor: Colors.red,
+      initialStrokeWidth: 4.0,
+      initialFontSize: 16.0,
+      maxHistorySteps: 50,
+    );
+    controller.addListener(() => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MultiCanvasSketchWrapper(
+      controller: controller,
+      isEnabled: isSketchMode, // Pass widget state
+      toolbarPosition: SketchToolbarPosition.bottomCenter,
+      child: Scaffold(
+        appBar: AppBar(
+          actions: [
+            // Toggle sketch mode
+            IconButton(
+              onPressed: () {
+                setState(() {
+                  isSketchMode = !isSketchMode;
+                });
+              },
+              icon: Icon(isSketchMode ? Icons.edit_off : Icons.edit),
+            ),
+            // Undo/Redo buttons
+            IconButton(
+              onPressed: controller.canUndo ? () => controller.undo() : null,
+              icon: Icon(Icons.undo),
+            ),
+            IconButton(
+              onPressed: controller.canRedo ? () => controller.redo() : null,
+              icon: Icon(Icons.redo),
+            ),
+          ],
+        ),
+        body: PageView.builder(
+          controller: pageController,
+          onPageChanged: (index) {
+            setState(() => currentPageIndex = index);
+          },
+          itemCount: 3,
+          itemBuilder: (context, index) {
+            return MultiCanvasRegion(
+              regionIndex: index,
+              child: PageContent("Page ${index + 1} Content"),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+```
 
 ---
 
