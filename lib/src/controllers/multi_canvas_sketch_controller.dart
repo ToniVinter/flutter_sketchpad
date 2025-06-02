@@ -146,41 +146,22 @@ class MultiCanvasSketchController extends ChangeNotifier {
     } else {
       _inserts.add(insert);
     }
-
-    // Automatically save to history unless this is an undo/redo operation
-    if (!_isUndoRedoOperation) {
-      saveState(_inserts);
-    }
-
     notifyListeners();
   }
 
   /// Remove an insert by ID
   void removeInsert(String id) {
     _inserts.removeWhere((insert) => insert.id == id);
-
-    // Automatically save to history unless this is an undo/redo operation
-    if (!_isUndoRedoOperation) {
-      saveState(_inserts);
-    }
-
     notifyListeners();
   }
 
   /// Clear all inserts
   void clearInserts() {
     _inserts.clear();
-
-    // Automatically save to history unless this is an undo/redo operation
-    if (!_isUndoRedoOperation) {
-      saveState(_inserts);
-    }
-
     notifyListeners();
   }
 
   /// Force save current state to history (e.g., when save button is pressed)
-  /// Note: With automatic history saving, this method is rarely needed
   void saveCurrentState() {
     saveState(_inserts);
   }
@@ -270,10 +251,18 @@ class MultiCanvasSketchController extends ChangeNotifier {
   bool _areStatesEqual(List<SketchInsert> state1, List<SketchInsert> state2) {
     if (state1.length != state2.length) return false;
 
-    // Since SketchInsert is immutable and has proper == implementation from Freezed,
-    // we can use direct object comparison
     for (int i = 0; i < state1.length; i++) {
-      if (state1[i] != state2[i]) return false;
+      final insert1 = state1[i];
+      final insert2 = state2[i];
+
+      // Quick comparison of key properties
+      if (insert1.id != insert2.id ||
+          insert1.type != insert2.type ||
+          insert1.text != insert2.text ||
+          insert1.textPosition != insert2.textPosition ||
+          insert1.points.length != insert2.points.length) {
+        return false;
+      }
     }
 
     return true;
@@ -286,21 +275,13 @@ class MultiCanvasSketchController extends ChangeNotifier {
     _selectedStrokeWidth = initialStrokeWidth;
     _selectedFontSize = initialFontSize;
     _registeredRegions.clear();
-
-    // Clear history manually to avoid double notifyListeners() call
-    _history.clear();
-    _currentIndex = -1;
-
+    clearHistory();
     notifyListeners();
   }
 
   @override
   void dispose() {
-    // Clear history and other resources before calling super.dispose()
     _history.clear();
-    _registeredRegions.clear();
-    _inserts.clear();
-
     super.dispose();
   }
 }
