@@ -7,7 +7,7 @@ import '../models/sketch_mode.dart';
 
 class SketchCanvas extends StatefulWidget {
   const SketchCanvas({
-    required this.sectionIndex,
+    required this.sectionId,
     required this.child,
     required this.inserts,
     required this.mode,
@@ -20,7 +20,7 @@ class SketchCanvas extends StatefulWidget {
     super.key,
   });
 
-  final int sectionIndex;
+  final String sectionId;
   final Widget child;
   final List<SketchInsert> inserts;
   final SketchMode mode;
@@ -67,14 +67,14 @@ class _SketchCanvasState extends State<SketchCanvas> {
   SketchMode get _currentMode => widget.mode;
 
   List<SketchInsert> get _sectionInserts => widget.inserts
-      .where((insert) => insert.sectionIndex == widget.sectionIndex)
+      .where((insert) => insert.sectionId == widget.sectionId)
       .toList();
 
   @override
   Widget build(BuildContext context) {
     // Update text controller context (without canvas size)
     _textController.updateContext(
-      sectionIndex: widget.sectionIndex,
+      sectionId: widget.sectionId,
       selectedColor: widget.selectedColor,
       selectedFontSize: widget.selectedFontSize,
       inserts: widget.inserts,
@@ -179,7 +179,7 @@ class _SketchCanvasState extends State<SketchCanvas> {
 
     // if (_currentMode == SketchMode.eraser) {
     //   _drawingController.eraseAt(
-    //     widget.sectionIndex,
+    //     widget.sectionId,
     //     position,
     //     widget.selectedStrokeWidth * 2,
     //   );
@@ -194,7 +194,7 @@ class _SketchCanvasState extends State<SketchCanvas> {
     // if (_currentMode == SketchMode.eraser) {
     //   if (_isWithinBounds(position)) {
     //     _drawingController.eraseAt(
-    //       widget.sectionIndex,
+    //       widget.sectionId,
     //       position,
     //       widget.selectedStrokeWidth * 2,
     //     );
@@ -222,7 +222,7 @@ class _SketchCanvasState extends State<SketchCanvas> {
   void _handlePanEnd(DragEndDetails details) {
     // if (_currentMode != SketchMode.eraser) {
     _drawingController.finishDrawing(
-      widget.sectionIndex,
+      widget.sectionId,
       _getStrokeWidth(),
       _getDrawingColor(),
       _currentMode == SketchMode.highlighting
@@ -273,7 +273,7 @@ class _SketchCanvasState extends State<SketchCanvas> {
       widget.onSaveInsert(
         SketchInsert(
           id: DateTime.now().millisecondsSinceEpoch.toString(),
-          sectionIndex: widget.sectionIndex,
+          sectionId: widget.sectionId,
           type: _currentMode == SketchMode.highlighting
               ? SketchInsertType.drawing
               : SketchInsertType.drawing,
@@ -345,7 +345,7 @@ class DrawingController {
     onStateChanged();
   }
 
-  void finishDrawing(int sectionIndex, double strokeWidth, Color color,
+  void finishDrawing(String sectionId, double strokeWidth, Color color,
       SketchInsertType type) {
     if (!_isDrawing) return;
 
@@ -353,7 +353,7 @@ class DrawingController {
       onSaveInsert(
         SketchInsert(
           id: DateTime.now().millisecondsSinceEpoch.toString(),
-          sectionIndex: sectionIndex,
+          sectionId: sectionId,
           type: type,
           points: List<Offset>.from(_currentDrawingPoints),
           color: color,
@@ -368,8 +368,8 @@ class DrawingController {
     onStateChanged();
   }
 
-  void eraseAt(int sectionIndex, Offset position, double size) {
-    // onEraseInsertAt(sectionIndex, position, size);  // Future version
+  void eraseAt(String sectionId, Offset position, double size) {
+    // onEraseInsertAt(sectionId, position, size);  // Future version
   }
 
   void dispose() {
@@ -400,7 +400,7 @@ class TextController {
   Offset? _dragStartPosition;
 
   // Store parent context info for callbacks
-  int? _sectionIndex;
+  String? _sectionId;
   Color? _selectedColor;
   double? _selectedFontSize;
   List<SketchInsert>? _inserts;
@@ -415,12 +415,12 @@ class TextController {
   }
 
   void updateContext({
-    required int sectionIndex,
+    required String sectionId,
     required Color selectedColor,
     required double selectedFontSize,
     required List<SketchInsert> inserts,
   }) {
-    _sectionIndex = sectionIndex;
+    _sectionId = sectionId;
     _selectedColor = selectedColor;
     _selectedFontSize = selectedFontSize;
     _inserts = inserts;
@@ -465,14 +465,14 @@ class TextController {
       // Update existing text - this should save to history
       onUpdateTextInsert(_editingTextId!, text, _editPosition!);
     } else if (_editPosition != null &&
-        _sectionIndex != null &&
+        _sectionId != null &&
         _selectedColor != null &&
         _selectedFontSize != null) {
       // Create new text insert
       onSaveInsert(
         SketchInsert(
           id: DateTime.now().millisecondsSinceEpoch.toString(),
-          sectionIndex: _sectionIndex!,
+          sectionId: _sectionId!,
           points: [],
           color: _selectedColor!,
           strokeWidth: 1.0,

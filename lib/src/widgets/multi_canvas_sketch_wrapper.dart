@@ -10,12 +10,39 @@ import 'dart:async';
 ///
 /// Use this wrapper with `MultiCanvasRegion` widgets anywhere below to create
 /// annotation areas that share a single toolbar and automatic history management.
+///
+/// ## Toolbar Animation
+///
+/// The toolbar supports smooth animations when appearing/disappearing:
+/// - **enableToolbarAnimation**: Enable/disable animations (default: true)
+/// - **toolbarAnimationDuration**: How long the animation takes (default: 300ms)
+/// - **toolbarAnimationCurve**: Animation easing curve (default: Curves.easeInOut)
+///
+/// Different positions have different animation styles:
+/// - **Top/Bottom Center**: Slides in from above/below with scale effect
+/// - **Corners**: Slides in diagonally from the respective corner with scale effect
+///
+/// Example with custom animation:
+/// ```dart
+/// MultiCanvasSketchWrapper(
+///   controller: controller,
+///   isEnabled: isSketchMode,
+///   toolbarPosition: SketchToolbarPosition.bottomCenter,
+///   enableToolbarAnimation: true,
+///   toolbarAnimationDuration: Duration(milliseconds: 400),
+///   toolbarAnimationCurve: Curves.elasticOut,
+///   child: YourContentWidget(),
+/// )
+/// ```
 class MultiCanvasSketchWrapper extends StatefulWidget {
   const MultiCanvasSketchWrapper({
     required this.controller,
     required this.child,
     this.isEnabled = false,
     this.toolbarPosition = SketchToolbarPosition.bottomCenter,
+    this.enableToolbarAnimation = true,
+    this.toolbarAnimationDuration = const Duration(milliseconds: 300),
+    this.toolbarAnimationCurve = Curves.easeInOut,
     super.key,
   });
 
@@ -30,6 +57,15 @@ class MultiCanvasSketchWrapper extends StatefulWidget {
 
   /// Position of the annotation toolbar
   final SketchToolbarPosition toolbarPosition;
+
+  /// Whether to animate toolbar appearance/disappearance
+  final bool enableToolbarAnimation;
+
+  /// Duration of toolbar animation
+  final Duration toolbarAnimationDuration;
+
+  /// Curve for toolbar animation
+  final Curve toolbarAnimationCurve;
 
   @override
   State<MultiCanvasSketchWrapper> createState() =>
@@ -64,14 +100,17 @@ class _MultiCanvasSketchWrapperState extends State<MultiCanvasSketchWrapper> {
   }
 
   void _onControllerChanged() {
-    // Defer setState to avoid calling it during build
-    if (mounted) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          setState(() {});
-        }
-      });
-    }
+    // Only update if mounted and not already rebuilding
+    if (!mounted) return;
+
+    // Use a more robust approach to avoid setState during build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        setState(() {
+          // This setState is now safe and deferred
+        });
+      }
+    });
   }
 
   // Handle save insert - delegate directly to controller
@@ -118,6 +157,9 @@ class _MultiCanvasSketchWrapperState extends State<MultiCanvasSketchWrapper> {
       initialColor: widget.controller.initialColor,
       initialStrokeWidth: widget.controller.initialStrokeWidth,
       initialFontSize: widget.controller.initialFontSize,
+      enableAnimation: widget.enableToolbarAnimation,
+      animationDuration: widget.toolbarAnimationDuration,
+      animationCurve: widget.toolbarAnimationCurve,
       onModeChanged: widget.controller.setMode,
       onColorSelected: widget.controller.setColor,
       onStrokeWidthSelected: widget.controller.setStrokeWidth,
@@ -133,7 +175,7 @@ class _MultiCanvasSketchWrapperState extends State<MultiCanvasSketchWrapper> {
       child: Stack(
         children: [
           widget.child,
-          if (widget.isEnabled) _buildPositionedToolbar(),
+          _buildPositionedToolbar(),
         ],
       ),
     );
@@ -186,13 +228,13 @@ class _MultiCanvasSketchWrapperState extends State<MultiCanvasSketchWrapper> {
 /// A region that connects to MultiCanvasSketchWrapper when it's in provider mode
 class MultiCanvasRegion extends StatefulWidget {
   const MultiCanvasRegion({
-    required this.regionIndex,
+    required this.sectionId,
     required this.child,
     super.key,
   });
 
-  /// Unique index for this region
-  final int regionIndex;
+  /// Unique ID for this region
+  final String sectionId;
 
   /// Child widget to wrap with sketch functionality
   final Widget child;
@@ -211,17 +253,17 @@ class _MultiCanvasRegionState extends State<MultiCanvasRegion> {
     final newProvider = _MultiCanvasProvider.of(context);
     if (newProvider != _provider) {
       // Unregister from old controller
-      _provider?.controller.unregisterRegion(widget.regionIndex);
+      _provider?.controller.unregisterRegion(widget.sectionId);
 
       // Register with new controller
       _provider = newProvider;
-      _provider?.controller.registerRegion(widget.regionIndex);
+      _provider?.controller.registerRegion(widget.sectionId);
     }
   }
 
   @override
   void dispose() {
-    _provider?.controller.unregisterRegion(widget.regionIndex);
+    _provider?.controller.unregisterRegion(widget.sectionId);
     super.dispose();
   }
 
@@ -243,11 +285,10 @@ class _MultiCanvasRegionState extends State<MultiCanvasRegion> {
             wrapper.widget.isEnabled ? controller.mode : SketchMode.none;
 
         // Get inserts for this specific region from the controller
-        final regionInserts =
-            controller.getInsertsForSection(widget.regionIndex);
+        final regionInserts = controller.getInsertsForSection(widget.sectionId);
 
         Widget child = SketchCanvas(
-          sectionIndex: widget.regionIndex,
+          sectionId: widget.sectionId,
           child: widget.child,
           inserts: regionInserts,
           mode: mode,

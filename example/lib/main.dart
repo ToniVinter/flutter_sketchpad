@@ -241,7 +241,7 @@ class _SketchpadExamplePageState extends State<SketchpadExamplePage> {
                     isEnabled: isSketchMode,
                     toolbarPosition: SketchToolbarPosition.bottomCenter,
                     child: MultiCanvasRegion(
-                      regionIndex: 0,
+                      sectionId: "0",
                       child: SizedBox(
                         width: double.infinity,
                         height: double.infinity,

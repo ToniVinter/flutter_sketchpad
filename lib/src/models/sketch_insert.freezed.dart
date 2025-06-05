@@ -26,8 +26,8 @@ mixin _$SketchInsert {
   /// ID of the sketch this insert belongs to
   String? get sketchId => throw _privateConstructorUsedError;
 
-  /// Index of the section within the content
-  int get sectionIndex => throw _privateConstructorUsedError;
+  /// ID of the section within the content
+  String get sectionId => throw _privateConstructorUsedError;
   @OffsetListConverter()
   List<Offset> get points => throw _privateConstructorUsedError;
   @ColorConverter()
@@ -59,7 +59,7 @@ abstract class $SketchInsertCopyWith<$Res> {
   $Res call(
       {String id,
       String? sketchId,
-      int sectionIndex,
+      String sectionId,
       @OffsetListConverter() List<Offset> points,
       @ColorConverter() Color color,
       double strokeWidth,
@@ -87,7 +87,7 @@ class _$SketchInsertCopyWithImpl<$Res, $Val extends SketchInsert>
   $Res call({
     Object? id = null,
     Object? sketchId = freezed,
-    Object? sectionIndex = null,
+    Object? sectionId = null,
     Object? points = null,
     Object? color = null,
     Object? strokeWidth = null,
@@ -106,10 +106,10 @@ class _$SketchInsertCopyWithImpl<$Res, $Val extends SketchInsert>
           ? _value.sketchId
           : sketchId // ignore: cast_nullable_to_non_nullable
               as String?,
-      sectionIndex: null == sectionIndex
-          ? _value.sectionIndex
-          : sectionIndex // ignore: cast_nullable_to_non_nullable
-              as int,
+      sectionId: null == sectionId
+          ? _value.sectionId
+          : sectionId // ignore: cast_nullable_to_non_nullable
+              as String,
       points: null == points
           ? _value.points
           : points // ignore: cast_nullable_to_non_nullable
@@ -157,7 +157,7 @@ abstract class _$$SketchInsertImplCopyWith<$Res>
   $Res call(
       {String id,
       String? sketchId,
-      int sectionIndex,
+      String sectionId,
       @OffsetListConverter() List<Offset> points,
       @ColorConverter() Color color,
       double strokeWidth,
@@ -183,7 +183,7 @@ class __$$SketchInsertImplCopyWithImpl<$Res>
   $Res call({
     Object? id = null,
     Object? sketchId = freezed,
-    Object? sectionIndex = null,
+    Object? sectionId = null,
     Object? points = null,
     Object? color = null,
     Object? strokeWidth = null,
@@ -202,10 +202,10 @@ class __$$SketchInsertImplCopyWithImpl<$Res>
           ? _value.sketchId
           : sketchId // ignore: cast_nullable_to_non_nullable
               as String?,
-      sectionIndex: null == sectionIndex
-          ? _value.sectionIndex
-          : sectionIndex // ignore: cast_nullable_to_non_nullable
-              as int,
+      sectionId: null == sectionId
+          ? _value.sectionId
+          : sectionId // ignore: cast_nullable_to_non_nullable
+              as String,
       points: null == points
           ? _value._points
           : points // ignore: cast_nullable_to_non_nullable
@@ -248,7 +248,7 @@ class _$SketchInsertImpl implements _SketchInsert {
   const _$SketchInsertImpl(
       {required this.id,
       this.sketchId,
-      required this.sectionIndex,
+      required this.sectionId,
       @OffsetListConverter() required final List<Offset> points,
       @ColorConverter() required this.color,
       required this.strokeWidth,
@@ -270,9 +270,9 @@ class _$SketchInsertImpl implements _SketchInsert {
   @override
   final String? sketchId;
 
-  /// Index of the section within the content
+  /// ID of the section within the content
   @override
-  final int sectionIndex;
+  final String sectionId;
   final List<Offset> _points;
   @override
   @OffsetListConverter()
@@ -302,7 +302,7 @@ class _$SketchInsertImpl implements _SketchInsert {
 
   @override
   String toString() {
-    return 'SketchInsert(id: $id, sketchId: $sketchId, sectionIndex: $sectionIndex, points: $points, color: $color, strokeWidth: $strokeWidth, type: $type, text: $text, textPosition: $textPosition, fontSize: $fontSize, createdAt: $createdAt)';
+    return 'SketchInsert(id: $id, sketchId: $sketchId, sectionId: $sectionId, points: $points, color: $color, strokeWidth: $strokeWidth, type: $type, text: $text, textPosition: $textPosition, fontSize: $fontSize, createdAt: $createdAt)';
   }
 
   @override
@@ -313,8 +313,8 @@ class _$SketchInsertImpl implements _SketchInsert {
             (identical(other.id, id) || other.id == id) &&
             (identical(other.sketchId, sketchId) ||
                 other.sketchId == sketchId) &&
-            (identical(other.sectionIndex, sectionIndex) ||
-                other.sectionIndex == sectionIndex) &&
+            (identical(other.sectionId, sectionId) ||
+                other.sectionId == sectionId) &&
             const DeepCollectionEquality().equals(other._points, _points) &&
             (identical(other.color, color) || other.color == color) &&
             (identical(other.strokeWidth, strokeWidth) ||
@@ -335,7 +335,7 @@ class _$SketchInsertImpl implements _SketchInsert {
       runtimeType,
       id,
       sketchId,
-      sectionIndex,
+      sectionId,
       const DeepCollectionEquality().hash(_points),
       color,
       strokeWidth,
@@ -365,7 +365,7 @@ abstract class _SketchInsert implements SketchInsert {
   const factory _SketchInsert(
       {required final String id,
       final String? sketchId,
-      required final int sectionIndex,
+      required final String sectionId,
       @OffsetListConverter() required final List<Offset> points,
       @ColorConverter() required final Color color,
       required final double strokeWidth,
@@ -386,9 +386,9 @@ abstract class _SketchInsert implements SketchInsert {
   @override
   String? get sketchId;
 
-  /// Index of the section within the content
+  /// ID of the section within the content
   @override
-  int get sectionIndex;
+  String get sectionId;
   @override
   @OffsetListConverter()
   List<Offset> get points;

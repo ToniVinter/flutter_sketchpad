@@ -45,7 +45,7 @@ class MultiCanvasSketchController extends ChangeNotifier {
   final List<SketchInsert> _inserts = [];
 
   // Simple region tracking (no callbacks needed)
-  final Set<int> _registeredRegions = {};
+  final Set<String> _registeredRegions = {};
 
   // ===== HISTORY STATE =====
   final List<List<SketchInsert>> _history = [];
@@ -72,10 +72,8 @@ class MultiCanvasSketchController extends ChangeNotifier {
   List<SketchInsert> get inserts => List.unmodifiable(_inserts);
 
   /// Get inserts for a specific section
-  List<SketchInsert> getInsertsForSection(int sectionIndex) {
-    return _inserts
-        .where((insert) => insert.sectionIndex == sectionIndex)
-        .toList();
+  List<SketchInsert> getInsertsForSection(String sectionId) {
+    return _inserts.where((insert) => insert.sectionId == sectionId).toList();
   }
 
   /// Total number of inserts
@@ -98,18 +96,18 @@ class MultiCanvasSketchController extends ChangeNotifier {
   // ===== SKETCH METHODS =====
 
   /// Register a region (simplified - no callbacks)
-  void registerRegion(int regionIndex) {
-    _registeredRegions.add(regionIndex);
+  void registerRegion(String regionId) {
+    _registeredRegions.add(regionId);
   }
 
   /// Unregister a region
-  void unregisterRegion(int regionIndex) {
-    _registeredRegions.remove(regionIndex);
+  void unregisterRegion(String regionId) {
+    _registeredRegions.remove(regionId);
   }
 
   /// Check if a region is registered
-  bool isRegionRegistered(int regionIndex) {
-    return _registeredRegions.contains(regionIndex);
+  bool isRegionRegistered(String regionId) {
+    return _registeredRegions.contains(regionId);
   }
 
   /// Change the current sketch mode

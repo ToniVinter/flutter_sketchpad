@@ -18,8 +18,8 @@ class SketchInsert with _$SketchInsert {
     /// ID of the sketch this insert belongs to
     String? sketchId,
 
-    /// Index of the section within the content
-    required int sectionIndex,
+    /// ID of the section within the content
+    required String sectionId,
     @OffsetListConverter() required List<Offset> points,
     @ColorConverter() required Color color,
     required double strokeWidth,

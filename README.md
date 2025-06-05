@@ -131,7 +131,7 @@ MultiCanvasSketchWrapper(
     children: [
       Expanded(
         child: MultiCanvasRegion(
-          regionIndex: 0,
+          sectionId: "0",
           child: Container(
             color: Colors.blue[50],
             child: Center(child: Text('First Section')),
@@ -140,7 +140,7 @@ MultiCanvasSketchWrapper(
       ),
       Expanded(
         child: MultiCanvasRegion(
-          regionIndex: 1,
+          sectionId: "1",
           child: Container(
             color: Colors.green[50],
             child: Center(child: Text('Second Section')),
@@ -170,7 +170,7 @@ For more control, use the canvas and toolbar separately:
 Stack(
   children: [
     SketchCanvas(
-      sectionIndex: 0,
+      sectionId: "0",
       inserts: controller.inserts,
       mode: isSketchMode ? controller.mode : SketchMode.none,
       selectedColor: controller.selectedColor,
@@ -226,7 +226,7 @@ List<SketchInsert> regionInserts = controller.getInsertsForSection(0);
 // Add insert programmatically
 controller.upsertInsert(SketchInsert(
   id: 'unique-id',
-  sectionIndex: 0,
+  sectionId: "0",
   type: SketchInsertType.text,
   text: 'Programmatic text',
   textPosition: Offset(100, 100),
@@ -271,7 +271,7 @@ Represents a single sketch element (drawing or text annotation).
 class SketchInsert {
   final String id;
   final String? sketchId;
-  final int sectionIndex;
+  final String sectionId;
   final List<Offset> points;
   final Color color;
   final double strokeWidth;
@@ -444,7 +444,7 @@ class _MyMultiPageAppState extends State<MyMultiPageApp> {
           itemCount: 3,
           itemBuilder: (context, index) {
             return MultiCanvasRegion(
-              regionIndex: index,
+              sectionId: "page_$index",
               child: PageContent("Page ${index + 1} Content"),
             );
           },

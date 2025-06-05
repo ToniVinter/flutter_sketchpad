@@ -10,7 +10,7 @@ _$SketchInsertImpl _$$SketchInsertImplFromJson(Map<String, dynamic> json) =>
     _$SketchInsertImpl(
       id: json['id'] as String,
       sketchId: json['sketchId'] as String?,
-      sectionIndex: (json['sectionIndex'] as num).toInt(),
+      sectionId: json['sectionId'] as String,
       points: const OffsetListConverter().fromJson(json['points'] as List),
       color: const ColorConverter().fromJson((json['color'] as num).toInt()),
       strokeWidth: (json['strokeWidth'] as num).toDouble(),
@@ -29,7 +29,7 @@ Map<String, dynamic> _$$SketchInsertImplToJson(_$SketchInsertImpl instance) =>
     <String, dynamic>{
       'id': instance.id,
       'sketchId': instance.sketchId,
-      'sectionIndex': instance.sectionIndex,
+      'sectionId': instance.sectionId,
       'points': const OffsetListConverter().toJson(instance.points),
       'color': const ColorConverter().toJson(instance.color),
       'strokeWidth': instance.strokeWidth,

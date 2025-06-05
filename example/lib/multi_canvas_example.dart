@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_sketchpad/flutter_sketchpad.dart';
 
@@ -42,13 +43,52 @@ class MultiCanvasExamplePage extends StatefulWidget {
   State<MultiCanvasExamplePage> createState() => _MultiCanvasExamplePageState();
 }
 
-class _MultiCanvasExamplePageState extends State<MultiCanvasExamplePage> {
-  // SINGLE unified controller handles everything - much simpler!
-  late final MultiCanvasSketchController controller;
+class _MultiCanvasExamplePageState extends State<MultiCanvasExamplePage>
+    with SingleTickerProviderStateMixin {
+  // Controller will be initialized after loading inserts from server
+  MultiCanvasSketchController? controller;
   final List<SketchInsert> inserts = []; // This will be synced from controller
 
   // Sketch mode state - now controlled by the widget
   bool isSketchMode = false;
+
+  // Loading state for async inserts
+  bool isLoadingInserts = true;
+
+  // Animation configuration state
+  Duration _animationDuration = const Duration(milliseconds: 350);
+  Curve _animationCurve = Curves.easeOutBack;
+  SketchToolbarPosition _toolbarPosition = SketchToolbarPosition.bottomCenter;
+
+  // Animation presets for demo
+  final List<Map<String, dynamic>> _animationPresets = [
+    {
+      'name': 'Bounce',
+      'duration': const Duration(milliseconds: 600),
+      'curve': Curves.elasticOut,
+    },
+    {
+      'name': 'Quick',
+      'duration': const Duration(milliseconds: 200),
+      'curve': Curves.easeOut,
+    },
+    {
+      'name': 'Smooth',
+      'duration': const Duration(milliseconds: 350),
+      'curve': Curves.easeOutBack,
+    },
+    {
+      'name': 'Slow',
+      'duration': const Duration(milliseconds: 800),
+      'curve': Curves.easeInOutCubic,
+    },
+  ];
+
+  int _currentPresetIndex = 2; // Start with 'Smooth'
+
+  // Animation for fade-in effect
+  late AnimationController _fadeAnimationController;
+  late Animation<double> _fadeAnimation;
 
   // Sample sections content
   final List<Map<String, dynamic>> sections = [
@@ -90,41 +130,231 @@ class _MultiCanvasExamplePageState extends State<MultiCanvasExamplePage> {
   void initState() {
     super.initState();
 
-    // Controller with default inserts (could load from database/storage)
+    // Initialize fade animation controller
+    _fadeAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _fadeAnimationController,
+      curve: Curves.easeInOut,
+    ));
+
+    // Load sample inserts asynchronously and initialize controller with them
+    _loadInsertsFromServer();
+  }
+
+  /// Simulate loading inserts from server with delay, then initialize controller
+  Future<void> _loadInsertsFromServer() async {
+    // Simulate network delay
+    await Future.delayed(const Duration(seconds: 1));
+
+    // Create sample inserts
+    final sampleInserts = _createSampleInserts();
+
+    // Initialize controller with loaded inserts
     controller = MultiCanvasSketchController(
       initialColor: Colors.red,
       initialStrokeWidth: 4.0,
       initialFontSize: 16.0,
       maxHistorySteps: 30,
-      defaultInserts: inserts, // Preload existing inserts
+      defaultInserts: sampleInserts, // Pass loaded inserts directly
     );
 
     // Listen to controller changes to sync when needed
-    controller.addListener(_onControllerChanged);
+    controller!.addListener(_onControllerChanged);
+
+    // Update loading state
+    setState(() {
+      isLoadingInserts = false;
+    });
+
+    // Start fade-in animation
+    _fadeAnimationController.forward();
+
+    debugPrint(
+        'Loaded ${sampleInserts.length} inserts from server and initialized controller');
   }
 
-  @override
-  void dispose() {
-    controller.dispose(); // Single dispose call
-    super.dispose();
+  /// Create sample sketch inserts to demonstrate preloaded content
+  List<SketchInsert> _createSampleInserts() {
+    final now = DateTime.now();
+    final List<SketchInsert> sampleInserts = [];
+
+    // Sample inserts for section 0 (Meeting Notes)
+    sampleInserts.addAll([
+      // Drawing: Simple arrow pointing to "Review current progress"
+      SketchInsert(
+        id: 'arrow_1',
+        sectionId: '0',
+        points: const [
+          Offset(50, 80),
+          Offset(80, 80),
+          Offset(75, 75),
+          Offset(80, 80),
+          Offset(75, 85),
+        ],
+        color: Colors.red,
+        strokeWidth: 3.0,
+        type: SketchInsertType.drawing,
+        createdAt: now.subtract(const Duration(hours: 2)),
+      ),
+
+      // Text annotation
+      SketchInsert(
+        id: 'note_1',
+        sectionId: '0',
+        points: const [], // Empty for text inserts
+        color: Colors.blue,
+        strokeWidth: 2.0,
+        type: SketchInsertType.text,
+        text: 'Priority!',
+        textPosition: const Offset(100, 75),
+        fontSize: 14.0,
+        createdAt: now.subtract(const Duration(hours: 1)),
+      ),
+    ]);
+
+    // Sample inserts for section 1 (Design Ideas)
+    sampleInserts.addAll([
+      // Drawing: Simple circle highlighting "Color schemes"
+      SketchInsert(
+        id: 'circle_1',
+        sectionId: '1',
+        points: _generateCirclePoints(const Offset(120, 110), 25),
+        color: Colors.green,
+        strokeWidth: 2.5,
+        type: SketchInsertType.drawing,
+        createdAt: now.subtract(const Duration(minutes: 45)),
+      ),
+
+      // Text annotation for design ideas
+      SketchInsert(
+        id: 'design_note_1',
+        sectionId: '1',
+        points: const [],
+        color: Colors.purple,
+        strokeWidth: 2.0,
+        type: SketchInsertType.text,
+        text: 'Consider dark mode',
+        textPosition: const Offset(200, 130),
+        fontSize: 12.0,
+        createdAt: now.subtract(const Duration(minutes: 30)),
+      ),
+    ]);
+
+    // Sample inserts for section 2 (Technical Notes)
+    sampleInserts.addAll([
+      // Drawing: Underline for "Database schema"
+      SketchInsert(
+        id: 'underline_1',
+        sectionId: '2',
+        points: const [
+          Offset(40, 95),
+          Offset(140, 95),
+        ],
+        color: Colors.orange,
+        strokeWidth: 3.0,
+        type: SketchInsertType.drawing,
+        createdAt: now.subtract(const Duration(minutes: 20)),
+      ),
+
+      // Text annotation
+      SketchInsert(
+        id: 'tech_note_1',
+        sectionId: '2',
+        points: const [],
+        color: Colors.red,
+        strokeWidth: 2.0,
+        type: SketchInsertType.text,
+        text: 'Review this!',
+        textPosition: const Offset(150, 90),
+        fontSize: 13.0,
+        createdAt: now.subtract(const Duration(minutes: 15)),
+      ),
+    ]);
+
+    // Sample inserts for section 3 (Action Items)
+    sampleInserts.addAll([
+      // Drawing: Checkmark next to "Update documentation"
+      SketchInsert(
+        id: 'checkmark_1',
+        sectionId: '3',
+        points: const [
+          Offset(20, 85),
+          Offset(25, 90),
+          Offset(35, 75),
+        ],
+        color: Colors.green,
+        strokeWidth: 4.0,
+        type: SketchInsertType.drawing,
+        createdAt: now.subtract(const Duration(minutes: 10)),
+      ),
+
+      // Text showing deadline
+      SketchInsert(
+        id: 'deadline_1',
+        sectionId: '3',
+        points: const [],
+        color: Colors.red,
+        strokeWidth: 2.0,
+        type: SketchInsertType.text,
+        text: 'Due: Dec 15',
+        textPosition: const Offset(250, 120),
+        fontSize: 11.0,
+        createdAt: now.subtract(const Duration(minutes: 5)),
+      ),
+    ]);
+
+    return sampleInserts;
+  }
+
+  /// Helper method to generate points for a circle
+  List<Offset> _generateCirclePoints(Offset center, double radius) {
+    List<Offset> points = [];
+    const int numPoints = 36; // 10 degree increments
+
+    for (int i = 0; i <= numPoints; i++) {
+      double angle = (i * 2 * 3.14159) / numPoints;
+      double x = center.dx + radius * cos(angle);
+      double y = center.dy + radius * sin(angle);
+      points.add(Offset(x, y));
+    }
+
+    return points;
   }
 
   void _onControllerChanged() {
-    // Could sync here in real-time, or only when exiting sketch mode
-    // For now, we'll sync only when explicitly requested
-    if (!isSketchMode) {
-      // Auto-sync when exiting sketch mode
-      _syncFromController();
-    }
-    setState(() {}); // Update UI for other changes (undo/redo buttons, etc.)
+    // Only update if mounted and not already rebuilding
+    if (!mounted) return;
+
+    // Auto-sync when exiting sketch mode (deferred to avoid setState during build)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        // Could sync here in real-time, or only when exiting sketch mode
+        // For now, we'll sync only when explicitly requested
+        if (!isSketchMode) {
+          // Auto-sync when exiting sketch mode
+          _syncFromController();
+        }
+        setState(
+            () {}); // Update UI for other changes (undo/redo buttons, etc.)
+      }
+    });
   }
 
   // Sync app state from controller (call when save button pressed, etc.)
   void _syncFromController() {
+    if (controller == null) return;
+
     setState(() {
       inserts
         ..clear()
-        ..addAll(controller.inserts);
+        ..addAll(controller!.inserts);
     });
     // Here you could save to database, call API, etc.
     debugPrint('Synced ${inserts.length} inserts from controller');
@@ -132,12 +362,32 @@ class _MultiCanvasExamplePageState extends State<MultiCanvasExamplePage> {
 
   // Simple undo - no external coordination needed
   void _undo() {
-    controller.undo(); // Controller handles state internally
+    controller?.undo(); // Safe call with null check
   }
 
   // Simple redo - no external coordination needed
   void _redo() {
-    controller.redo(); // Controller handles state internally
+    controller?.redo(); // Safe call with null check
+  }
+
+  // Cycle through animation presets
+  void _cycleAnimationPreset() {
+    setState(() {
+      _currentPresetIndex =
+          (_currentPresetIndex + 1) % _animationPresets.length;
+      final preset = _animationPresets[_currentPresetIndex];
+      _animationDuration = preset['duration'] as Duration;
+      _animationCurve = preset['curve'] as Curve;
+    });
+  }
+
+  // Cycle through toolbar positions
+  void _cycleToolbarPosition() {
+    const positions = SketchToolbarPosition.values;
+    final currentIndex = positions.indexOf(_toolbarPosition);
+    setState(() {
+      _toolbarPosition = positions[(currentIndex + 1) % positions.length];
+    });
   }
 
   @override
@@ -145,9 +395,18 @@ class _MultiCanvasExamplePageState extends State<MultiCanvasExamplePage> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return MultiCanvasSketchWrapper(
-      controller: controller, // Single unified controller
-      isEnabled: isSketchMode,
-      toolbarPosition: SketchToolbarPosition.bottomCenter,
+      controller: controller ??
+          MultiCanvasSketchController(), // Provide fallback controller
+      isEnabled: isSketchMode &&
+          !isLoadingInserts &&
+          controller != null, // Disable while loading or null
+      toolbarPosition: _toolbarPosition,
+
+      // Animation configuration
+      enableToolbarAnimation: true,
+      toolbarAnimationDuration: _animationDuration,
+      toolbarAnimationCurve: _animationCurve,
+
       child: Scaffold(
         backgroundColor: isDark ? Colors.grey[900] : Colors.grey[50],
         appBar: AppBar(
@@ -155,19 +414,78 @@ class _MultiCanvasExamplePageState extends State<MultiCanvasExamplePage> {
           backgroundColor: isDark ? Colors.grey[900] : Colors.grey[50],
           elevation: 0,
           actions: [
+            // Loading indicator
+            if (isLoadingInserts)
+              Container(
+                margin: const EdgeInsets.only(right: 16),
+                child: const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.blue,
+                  ),
+                ),
+              ),
+
             // Manual sync button
             Container(
               margin: const EdgeInsets.only(right: 8),
               child: IconButton(
-                onPressed: () => _syncFromController(),
+                onPressed:
+                    isLoadingInserts ? null : () => _syncFromController(),
                 icon: Icon(
                   Icons.save_rounded,
-                  color: Colors.green[600],
+                  color:
+                      isLoadingInserts ? Colors.grey[400] : Colors.green[600],
                 ),
                 style: IconButton.styleFrom(
-                  backgroundColor: Colors.green[50],
+                  backgroundColor:
+                      isLoadingInserts ? Colors.grey[100] : Colors.green[50],
                 ),
-                tooltip: 'Save Current State',
+                tooltip: isLoadingInserts ? 'Loading...' : 'Save Current State',
+              ),
+            ),
+
+            // Animation preset cycle button
+            Container(
+              margin: const EdgeInsets.only(right: 8),
+              child: IconButton(
+                onPressed:
+                    isLoadingInserts ? null : () => _cycleAnimationPreset(),
+                icon: Icon(
+                  Icons.animation,
+                  color:
+                      isLoadingInserts ? Colors.grey[400] : Colors.purple[600],
+                ),
+                style: IconButton.styleFrom(
+                  backgroundColor:
+                      isLoadingInserts ? Colors.grey[100] : Colors.purple[50],
+                ),
+                tooltip: isLoadingInserts
+                    ? 'Loading...'
+                    : 'Animation: ${_animationPresets[_currentPresetIndex]['name']}',
+              ),
+            ),
+
+            // Toolbar position cycle button
+            Container(
+              margin: const EdgeInsets.only(right: 8),
+              child: IconButton(
+                onPressed:
+                    isLoadingInserts ? null : () => _cycleToolbarPosition(),
+                icon: Icon(
+                  Icons.dock,
+                  color:
+                      isLoadingInserts ? Colors.grey[400] : Colors.indigo[600],
+                ),
+                style: IconButton.styleFrom(
+                  backgroundColor:
+                      isLoadingInserts ? Colors.grey[100] : Colors.indigo[50],
+                ),
+                tooltip: isLoadingInserts
+                    ? 'Loading...'
+                    : 'Position: ${_toolbarPosition.name}',
               ),
             ),
 
@@ -175,21 +493,27 @@ class _MultiCanvasExamplePageState extends State<MultiCanvasExamplePage> {
             Container(
               margin: const EdgeInsets.only(right: 8),
               child: IconButton(
-                onPressed: () {
-                  setState(() {
-                    isSketchMode = !isSketchMode;
-                  });
-                },
+                onPressed: isLoadingInserts
+                    ? null
+                    : () {
+                        setState(() {
+                          isSketchMode = !isSketchMode;
+                        });
+                      },
                 icon: Icon(
                   isSketchMode ? Icons.edit_off : Icons.edit,
-                  color: isSketchMode ? Colors.orange[600] : Colors.grey[600],
+                  color: isLoadingInserts
+                      ? Colors.grey[400]
+                      : (isSketchMode ? Colors.orange[600] : Colors.grey[600]),
                 ),
                 style: IconButton.styleFrom(
-                  backgroundColor:
-                      isSketchMode ? Colors.orange[50] : Colors.transparent,
+                  backgroundColor: isLoadingInserts
+                      ? Colors.grey[100]
+                      : (isSketchMode ? Colors.orange[50] : Colors.transparent),
                 ),
-                tooltip:
-                    isSketchMode ? 'Exit Sketch Mode' : 'Enter Sketch Mode',
+                tooltip: isLoadingInserts
+                    ? 'Loading...'
+                    : (isSketchMode ? 'Exit Sketch Mode' : 'Enter Sketch Mode'),
               ),
             ),
 
@@ -197,13 +521,16 @@ class _MultiCanvasExamplePageState extends State<MultiCanvasExamplePage> {
             Container(
               margin: const EdgeInsets.only(right: 8),
               child: IconButton(
-                onPressed: controller.canUndo ? () => _undo() : null,
+                onPressed: (controller?.canUndo == true && !isLoadingInserts)
+                    ? () => _undo()
+                    : null,
                 icon: Icon(
                   Icons.undo_rounded,
-                  color:
-                      controller.canUndo ? Colors.blue[600] : Colors.grey[400],
+                  color: (controller?.canUndo == true && !isLoadingInserts)
+                      ? Colors.blue[600]
+                      : Colors.grey[400],
                 ),
-                tooltip: 'Undo',
+                tooltip: isLoadingInserts ? 'Loading...' : 'Undo',
               ),
             ),
 
@@ -211,13 +538,16 @@ class _MultiCanvasExamplePageState extends State<MultiCanvasExamplePage> {
             Container(
               margin: const EdgeInsets.only(right: 16),
               child: IconButton(
-                onPressed: controller.canRedo ? () => _redo() : null,
+                onPressed: (controller?.canRedo == true && !isLoadingInserts)
+                    ? () => _redo()
+                    : null,
                 icon: Icon(
                   Icons.redo_rounded,
-                  color:
-                      controller.canRedo ? Colors.blue[600] : Colors.grey[400],
+                  color: (controller?.canRedo == true && !isLoadingInserts)
+                      ? Colors.blue[600]
+                      : Colors.grey[400],
                 ),
-                tooltip: 'Redo',
+                tooltip: isLoadingInserts ? 'Loading...' : 'Redo',
               ),
             ),
           ],
@@ -251,9 +581,11 @@ class _MultiCanvasExamplePageState extends State<MultiCanvasExamplePage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'Controller-Managed Demo',
-                            style: TextStyle(
+                          Text(
+                            isLoadingInserts
+                                ? 'Loading Annotations...'
+                                : 'Animated Toolbar Demo',
+                            style: const TextStyle(
                               color: Colors.white,
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
@@ -261,12 +593,37 @@ class _MultiCanvasExamplePageState extends State<MultiCanvasExamplePage> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            'Controller stores inserts internally. App syncs when needed.',
+                            isLoadingInserts
+                                ? 'Fetching annotations from server...'
+                                : 'Animation: ${_animationPresets[_currentPresetIndex]['name']} • Position: ${_toolbarPosition.name}',
                             style: TextStyle(
                               color: Colors.white.withValues(alpha: 0.9),
                               fontSize: 14,
                             ),
                           ),
+                          if (isLoadingInserts) ...[
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                const SizedBox(
+                                  width: 12,
+                                  height: 12,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 1.5,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Loading 8 annotations...',
+                                  style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.8),
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -289,8 +646,10 @@ class _MultiCanvasExamplePageState extends State<MultiCanvasExamplePage> {
                       width: 1,
                     ),
                   ),
-                  child: MultiCanvasRegion(
-                    regionIndex: index,
+                  child: FadeInMultiCanvasRegion(
+                    sectionId: index.toString(),
+                    fadeAnimation: _fadeAnimation,
+                    isLoadingInserts: isLoadingInserts,
                     child: Container(
                       constraints: const BoxConstraints(minHeight: 200),
                       padding: const EdgeInsets.all(24),
@@ -356,6 +715,59 @@ class _MultiCanvasExamplePageState extends State<MultiCanvasExamplePage> {
           ),
         ),
       ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _fadeAnimationController.dispose();
+    controller?.dispose(); // Safe dispose with null check
+    super.dispose();
+  }
+}
+
+/// MultiCanvasRegion with fade-in animation support
+class FadeInMultiCanvasRegion extends StatelessWidget {
+  const FadeInMultiCanvasRegion({
+    required this.sectionId,
+    required this.fadeAnimation,
+    required this.isLoadingInserts,
+    required this.child,
+    super.key,
+  });
+
+  final String sectionId;
+  final Animation<double> fadeAnimation;
+  final bool isLoadingInserts;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: fadeAnimation,
+      builder: (context, _) {
+        return Stack(
+          children: [
+            // Always show the content (text, etc.)
+            child,
+            // Show sketch layer with opacity animation
+            if (!isLoadingInserts)
+              Positioned.fill(
+                child: Opacity(
+                  opacity: fadeAnimation.value,
+                  child: MultiCanvasRegion(
+                    sectionId: sectionId,
+                    child: Container(
+                      // Transparent container that covers the entire area
+                      // This ensures the sketch overlay covers the entire area
+                      color: Colors.transparent,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }
