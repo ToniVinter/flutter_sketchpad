@@ -12,6 +12,6 @@ enum SketchMode {
   /// Text mode for adding text annotations
   text,
 
-  /// Eraser mode for removing sketches (future feature)
+  /// Eraser mode for pixel-by-pixel erasing of drawings and text
   eraser,
 }

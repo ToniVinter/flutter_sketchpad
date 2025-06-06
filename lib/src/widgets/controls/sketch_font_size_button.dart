@@ -37,29 +37,33 @@ class _SketchFontSizeButtonState extends State<SketchFontSizeButton> {
     const fontSizes = [12.0, 16.0, 20.0, 24.0, 28.0];
 
     return SketchSettingsOverlay<double>(
-      targetAnchor: Alignment.topCenter,
-      followerAnchor: Alignment.bottomCenter,
-      offset: const Offset(-32, -24),
       anchorBuilder: (ctx, toggleOverlay) => Tooltip(
         message: 'Select Font Size',
         child: GestureDetector(
           onTap: toggleOverlay,
           child: Container(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
-              color: Colors.white.withAlpha(26),
               shape: BoxShape.circle,
               border: Border.all(
                 color: Colors.grey.withAlpha(77),
               ),
             ),
             child: Center(
-              child: Text(
-                '${_selectedFontSize.toInt()}',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
+              child: Container(
+                width: 24,
+                height: 24,
+                alignment: Alignment.center,
+                child: Material(
+                  color: Colors.transparent,
+                  child: Text(
+                    '${_selectedFontSize.toInt()}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -70,12 +74,12 @@ class _SketchFontSizeButtonState extends State<SketchFontSizeButton> {
       selectedOption: _selectedFontSize,
       onOptionSelected: _onFontSizeSelected,
       optionBuilder: (ctx, size, isSelected) => Container(
-        width: 40,
-        height: 32,
+        width: 33.5,
+        height: 33.5,
         decoration: BoxDecoration(
           color: isSelected
               ? Theme.of(ctx).colorScheme.primary.withAlpha(51)
-              : Colors.grey.withAlpha(51),
+              : Colors.transparent,
           shape: BoxShape.circle,
           border: Border.all(
             color: isSelected
@@ -94,7 +98,7 @@ class _SketchFontSizeButtonState extends State<SketchFontSizeButton> {
                 fontWeight: FontWeight.bold,
                 color: isSelected
                     ? Theme.of(ctx).colorScheme.primary
-                    : Colors.white,
+                    : Theme.of(context).colorScheme.onSurface,
               ),
             ),
           ),

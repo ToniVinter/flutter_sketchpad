@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../models/sketch_insert.dart';
 import '../models/sketch_painter.dart';
 import '../models/sketch_mode.dart';
@@ -16,6 +17,7 @@ class SketchCanvas extends StatefulWidget {
     required this.selectedFontSize,
     required this.onSaveInsert,
     required this.onUpdateTextInsert,
+    required this.onRemoveInsert,
     // required this.onEraseInsertAt,  // Future version
     super.key,
   });
@@ -30,6 +32,7 @@ class SketchCanvas extends StatefulWidget {
   final void Function(SketchInsert insert) onSaveInsert;
   final void Function(String id, String text, Offset position)
       onUpdateTextInsert;
+  final void Function(String id) onRemoveInsert;
   // final void Function(int sectionIndex, Offset position, double size)
   //     onEraseInsertAt;  // Future version
 
@@ -40,6 +43,13 @@ class SketchCanvas extends StatefulWidget {
 class _SketchCanvasState extends State<SketchCanvas> {
   late final DrawingController _drawingController;
   late final TextController _textController;
+
+  // Track recently removed text to avoid duplicate removals
+  final Set<String> _recentlyRemovedTextIds = {};
+
+  // Eraser indicator position and visibility
+  Offset? _eraserIndicatorPosition;
+  bool _showEraserIndicator = false;
 
   @override
   void initState() {
@@ -93,6 +103,7 @@ class _SketchCanvasState extends State<SketchCanvas> {
         _buildInteractionLayer(),
         _buildTextInserts(),
         _buildTextEditor(),
+        _buildEraserIndicator(),
       ],
     );
   }
@@ -106,8 +117,13 @@ class _SketchCanvasState extends State<SketchCanvas> {
             currentPoints: _drawingController.currentDrawingPoints,
             currentStrokeWidth: _getStrokeWidth(),
             currentColor: _getDrawingColor(),
+            currentMode: _currentMode,
           ),
-          child: Container(color: Colors.transparent),
+          child: Container(
+            color: Colors.transparent,
+            width: double.infinity,
+            height: double.infinity,
+          ),
         ),
       ),
     );
@@ -148,6 +164,8 @@ class _SketchCanvasState extends State<SketchCanvas> {
                   onDragUpdate: (position) => _textController
                       .updateDragPosition(position, context.size),
                   onDragEnd: _textController.stopDragging,
+                  // Always visible - no transparency changes
+                  isTransparent: false,
                 ))
             .toList(),
       ),
@@ -169,37 +187,30 @@ class _SketchCanvasState extends State<SketchCanvas> {
   }
 
   bool _shouldHandleDrawing(SketchMode mode) {
-    return mode == SketchMode.drawing || mode == SketchMode.highlighting;
-    // mode == SketchMode.eraser;  // Future version
+    return mode == SketchMode.drawing ||
+        mode == SketchMode.highlighting ||
+        mode == SketchMode.eraser;
   }
 
   void _handlePanStart(DragStartDetails details) {
     final position = details.localPosition;
     if (!_isWithinBounds(position)) return;
 
-    // if (_currentMode == SketchMode.eraser) {
-    //   _drawingController.eraseAt(
-    //     widget.sectionId,
-    //     position,
-    //     widget.selectedStrokeWidth * 2,
-    //   );
-    // } else {
     _drawingController.startDrawing(position);
-    // }
+
+    // Show eraser indicator for eraser mode
+    if (_currentMode == SketchMode.eraser) {
+      setState(() {
+        _eraserIndicatorPosition = position;
+        _showEraserIndicator = true;
+      });
+      _checkEraserCollisions(position);
+    }
   }
 
   void _handlePanUpdate(DragUpdateDetails details) {
     final position = details.localPosition;
 
-    // if (_currentMode == SketchMode.eraser) {
-    //   if (_isWithinBounds(position)) {
-    //     _drawingController.eraseAt(
-    //       widget.sectionId,
-    //       position,
-    //       widget.selectedStrokeWidth * 2,
-    //     );
-    //   }
-    // } else {
     // Handle drawing with proper mid-drawing saves
     if (!_drawingController.isDrawing) return;
 
@@ -211,25 +222,95 @@ class _SketchCanvasState extends State<SketchCanvas> {
     } else if (isWithinBounds) {
       // Normal drawing within bounds
       _drawingController.continueDrawing(position);
+
+      // Update eraser indicator position and check for collisions when erasing
+      if (_currentMode == SketchMode.eraser) {
+        setState(() {
+          _eraserIndicatorPosition = position;
+        });
+        _checkEraserCollisions(position);
+      }
     } else if (!_drawingController.isOutsideBounds) {
       // Just went outside - save current drawing
       _saveCurrentDrawing();
       _drawingController.setOutsideBounds(true);
     }
-    // }
+  }
+
+  void _checkEraserCollisions(Offset eraserPosition) {
+    final eraserRadius = _getStrokeWidth() / 2;
+
+    // Check collisions with text inserts in this section
+    final textInserts = _sectionInserts
+        .where((insert) => insert.type == SketchInsertType.text)
+        .where((insert) => !_recentlyRemovedTextIds.contains(insert.id))
+        .toList();
+
+    for (final textInsert in textInserts) {
+      if (textInsert.textPosition == null) continue;
+
+      // Calculate text bounds (approximate)
+      final textSize = _calculateTextSize(textInsert);
+      final textRect = Rect.fromLTWH(
+        textInsert.textPosition!.dx,
+        textInsert.textPosition!.dy,
+        textSize.width,
+        textSize.height,
+      );
+
+      // Check if eraser circle intersects with text rectangle
+      final eraserRect = Rect.fromCircle(
+        center: eraserPosition,
+        radius: eraserRadius,
+      );
+
+      if (eraserRect.overlaps(textRect)) {
+        // Mark as recently removed and remove the text insert
+        _recentlyRemovedTextIds.add(textInsert.id);
+        widget.onRemoveInsert(textInsert.id);
+      }
+    }
+  }
+
+  Size _calculateTextSize(SketchInsert textInsert) {
+    if (textInsert.text == null || textInsert.text!.isEmpty) {
+      return Size.zero;
+    }
+
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: textInsert.text!,
+        style: TextStyle(
+          fontSize: textInsert.fontSize ?? 16.0,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    );
+
+    textPainter.layout();
+    return textPainter.size;
   }
 
   void _handlePanEnd(DragEndDetails details) {
-    // if (_currentMode != SketchMode.eraser) {
     _drawingController.finishDrawing(
       widget.sectionId,
       _getStrokeWidth(),
       _getDrawingColor(),
       _currentMode == SketchMode.highlighting
           ? SketchInsertType.drawing
-          : SketchInsertType.drawing,
+          : _currentMode == SketchMode.eraser
+              ? SketchInsertType.eraser
+              : SketchInsertType.drawing,
     );
-    // }
+
+    // Hide eraser indicator and clear tracking when stroke ends
+    if (_currentMode == SketchMode.eraser) {
+      setState(() {
+        _eraserIndicatorPosition = null;
+        _showEraserIndicator = false;
+      });
+      _recentlyRemovedTextIds.clear();
+    }
   }
 
   void _handleTextTap(TapDownDetails details) {
@@ -276,7 +357,9 @@ class _SketchCanvasState extends State<SketchCanvas> {
           sectionId: widget.sectionId,
           type: _currentMode == SketchMode.highlighting
               ? SketchInsertType.drawing
-              : SketchInsertType.drawing,
+              : _currentMode == SketchMode.eraser
+                  ? SketchInsertType.eraser
+                  : SketchInsertType.drawing,
           points: points,
           color: _getDrawingColor(),
           strokeWidth: _getStrokeWidth(),
@@ -293,6 +376,32 @@ class _SketchCanvasState extends State<SketchCanvas> {
 
   void _handleStateChanged() {
     setState(() {});
+  }
+
+  Widget _buildEraserIndicator() {
+    if (_currentMode != SketchMode.eraser ||
+        !_showEraserIndicator ||
+        _eraserIndicatorPosition == null) {
+      return const SizedBox.shrink();
+    }
+
+    final eraserRadius = _getStrokeWidth() / 2;
+
+    return Positioned(
+      left: _eraserIndicatorPosition!.dx - eraserRadius,
+      top: _eraserIndicatorPosition!.dy - eraserRadius,
+      child: Container(
+        width: eraserRadius * 2,
+        height: eraserRadius * 2,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: Colors.grey.withValues(alpha: 0.8),
+            width: 1.5,
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -441,7 +550,11 @@ class TextController {
 
     Future.delayed(
       const Duration(milliseconds: 50),
-      focusNode.requestFocus,
+      () {
+        focusNode.requestFocus();
+        // Automatically scroll to keep the text field visible
+        _ensureTextFieldVisible();
+      },
     );
   }
 
@@ -454,8 +567,25 @@ class TextController {
 
     Future.delayed(
       const Duration(milliseconds: 50),
-      focusNode.requestFocus,
+      () {
+        focusNode.requestFocus();
+        // Automatically scroll to keep the text field visible
+        _ensureTextFieldVisible();
+      },
     );
+  }
+
+  /// Automatically scroll to keep the text field visible
+  void _ensureTextFieldVisible() {
+    if (focusNode.context != null) {
+      Scrollable.ensureVisible(
+        focusNode.context!,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+        alignmentPolicy: ScrollPositionAlignmentPolicy.explicit,
+        alignment: 0.3,
+      );
+    }
   }
 
   void saveText() {
@@ -571,6 +701,7 @@ class TextInsertWidget extends StatelessWidget {
     required this.onDragStart,
     required this.onDragUpdate,
     required this.onDragEnd,
+    required this.isTransparent,
     super.key,
   });
 
@@ -580,6 +711,7 @@ class TextInsertWidget extends StatelessWidget {
   final void Function(Offset position) onDragStart;
   final void Function(Offset position) onDragUpdate;
   final VoidCallback onDragEnd;
+  final bool isTransparent;
 
   @override
   Widget build(BuildContext context) {
@@ -600,7 +732,7 @@ class TextInsertWidget extends StatelessWidget {
           child: Text(
             insert.text ?? '',
             style: TextStyle(
-              color: insert.color,
+              color: isTransparent ? Colors.transparent : insert.color,
               fontSize: insert.fontSize ?? 16,
             ),
           ),

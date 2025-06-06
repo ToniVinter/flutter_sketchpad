@@ -5,41 +5,26 @@ import 'package:flutter_lucide/flutter_lucide.dart';
 import 'controls/sketch_color_button.dart';
 import 'controls/sketch_font_size_button.dart';
 import 'sketch_stroke_width_button.dart';
+import '../controllers/multi_canvas_sketch_controller.dart';
 import '../models/sketch_mode.dart';
 
 /// A toolbar that provides sketch tools for marking up content with built-in animations.
 class SketchToolbar extends StatefulWidget {
   /// Creates a sketch toolbar.
   const SketchToolbar({
-    required this.isEnabled,
-    required this.mode,
-    required this.onModeChanged,
-    required this.onStrokeWidthSelected,
-    required this.onColorSelected,
-    required this.onFontSizeSelected,
-    this.initialColor = Colors.red,
-    this.initialStrokeWidth = 4.0,
-    this.initialFontSize = 16.0,
+    required this.controller,
+    this.isEnabled = true,
     this.enableAnimation = true,
     this.animationDuration = const Duration(milliseconds: 300),
     this.animationCurve = Curves.easeInOut,
     super.key,
   });
 
+  /// Controller for automatic state management
+  final MultiCanvasSketchController controller;
+
   /// Whether the sketch toolbar is enabled
   final bool isEnabled;
-
-  /// Current sketch mode
-  final SketchMode mode;
-
-  /// Initial color for color controls
-  final Color initialColor;
-
-  /// Initial stroke width for stroke controls
-  final double initialStrokeWidth;
-
-  /// Initial font size for font controls
-  final double initialFontSize;
 
   /// Whether to animate show/hide transitions
   final bool enableAnimation;
@@ -49,18 +34,6 @@ class SketchToolbar extends StatefulWidget {
 
   /// Curve for show/hide animations
   final Curve animationCurve;
-
-  /// Callback when sketch mode changes
-  final ValueChanged<SketchMode> onModeChanged;
-
-  /// Callback when stroke width is selected
-  final ValueChanged<double> onStrokeWidthSelected;
-
-  /// Callback when color is selected
-  final ValueChanged<Color> onColorSelected;
-
-  /// Callback when font size is selected
-  final ValueChanged<double> onFontSizeSelected;
 
   @override
   State<SketchToolbar> createState() => _SketchToolbarState();
@@ -89,10 +62,14 @@ class _SketchToolbarState extends State<SketchToolbar>
     if (widget.isEnabled) {
       _animationController.value = 1.0;
     }
+
+    // Listen to controller changes
+    widget.controller.addListener(_onControllerChanged);
   }
 
   @override
   void dispose() {
+    widget.controller.removeListener(_onControllerChanged);
     _animationController.dispose();
     super.dispose();
   }
@@ -100,6 +77,12 @@ class _SketchToolbarState extends State<SketchToolbar>
   @override
   void didUpdateWidget(SketchToolbar oldWidget) {
     super.didUpdateWidget(oldWidget);
+
+    // Update listener if controller changed
+    if (widget.controller != oldWidget.controller) {
+      oldWidget.controller.removeListener(_onControllerChanged);
+      widget.controller.addListener(_onControllerChanged);
+    }
 
     // Update animation duration if changed
     if (widget.animationDuration != oldWidget.animationDuration) {
@@ -117,6 +100,14 @@ class _SketchToolbarState extends State<SketchToolbar>
     // Handle enabled state changes
     if (widget.isEnabled != oldWidget.isEnabled) {
       _updateAnimation();
+    }
+  }
+
+  void _onControllerChanged() {
+    if (mounted) {
+      setState(() {
+        // Rebuild when controller state changes
+      });
     }
   }
 
@@ -187,10 +178,6 @@ class _SketchToolbarState extends State<SketchToolbar>
                 offset: const Offset(0, 2),
               ),
             ],
-            border: Border.all(
-              color: Colors.white.withAlpha(51),
-              width: 0.5,
-            ),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -198,10 +185,10 @@ class _SketchToolbarState extends State<SketchToolbar>
               // Drawing mode toggle (pen icon)
               _buildToolbarButton(
                 icon: LucideIcons.pen,
-                isSelected: widget.mode == SketchMode.drawing,
+                isSelected: widget.controller.mode == SketchMode.drawing,
                 tooltip: 'Toggle Drawing Mode',
-                onPressed: () => widget.onModeChanged(
-                  widget.mode == SketchMode.drawing
+                onPressed: () => widget.controller.setMode(
+                  widget.controller.mode == SketchMode.drawing
                       ? SketchMode.none
                       : SketchMode.drawing,
                 ),
@@ -212,10 +199,10 @@ class _SketchToolbarState extends State<SketchToolbar>
               // Highlight mode toggle
               _buildToolbarButton(
                 icon: LucideIcons.highlighter,
-                isSelected: widget.mode == SketchMode.highlighting,
+                isSelected: widget.controller.mode == SketchMode.highlighting,
                 tooltip: 'Toggle Highlight Mode',
-                onPressed: () => widget.onModeChanged(
-                  widget.mode == SketchMode.highlighting
+                onPressed: () => widget.controller.setMode(
+                  widget.controller.mode == SketchMode.highlighting
                       ? SketchMode.none
                       : SketchMode.highlighting,
                 ),
@@ -226,69 +213,96 @@ class _SketchToolbarState extends State<SketchToolbar>
               // Text mode toggle (text icon)
               _buildToolbarButton(
                 icon: LucideIcons.type,
-                isSelected: widget.mode == SketchMode.text,
+                isSelected: widget.controller.mode == SketchMode.text,
                 tooltip: 'Toggle Text Mode',
-                onPressed: () => widget.onModeChanged(
-                  widget.mode == SketchMode.text
+                onPressed: () => widget.controller.setMode(
+                  widget.controller.mode == SketchMode.text
                       ? SketchMode.none
                       : SketchMode.text,
                 ),
                 context: context,
               ),
 
+              const SizedBox(width: 12),
+              // Eraser mode toggle
+              _buildToolbarButton(
+                icon: LucideIcons.eraser,
+                isSelected: widget.controller.mode == SketchMode.eraser,
+                tooltip: 'Toggle Eraser Mode',
+                onPressed: () {
+                  if (widget.controller.mode == SketchMode.eraser) {
+                    widget.controller.setMode(SketchMode.none);
+                  } else {
+                    widget.controller.setMode(SketchMode.eraser);
+                    // Set default stroke width for eraser to 16 pixels
+                    widget.controller.setStrokeWidth(16.0);
+                  }
+                },
+                context: context,
+              ),
+
               // Drawing mode controls: color & stroke width only
-              if (widget.mode == SketchMode.drawing) ...[
+              if (widget.controller.mode == SketchMode.drawing) ...[
                 const SizedBox(width: 12),
                 _buildDivider(),
                 const SizedBox(width: 12),
                 SketchColorButton(
-                  initialColor: widget.initialColor,
-                  onColorSelected: widget.onColorSelected,
+                  initialColor: widget.controller.initialColor,
+                  onColorSelected: widget.controller.setColor,
                 ),
                 const SizedBox(width: 12),
-                _buildDivider(),
-                const SizedBox(width: 12),
                 SketchStrokeWidthButton(
-                  initialStrokeWidth: widget.initialStrokeWidth,
+                  initialStrokeWidth: widget.controller.initialStrokeWidth,
                   isHighlightMode: false,
-                  onStrokeWidthSelected: widget.onStrokeWidthSelected,
+                  isEraserMode: false,
+                  onStrokeWidthSelected: widget.controller.setStrokeWidth,
                 ),
               ],
 
               // Highlight mode controls: color & stroke width
-              if (widget.mode == SketchMode.highlighting) ...[
+              if (widget.controller.mode == SketchMode.highlighting) ...[
                 const SizedBox(width: 12),
                 _buildDivider(),
                 const SizedBox(width: 12),
                 SketchColorButton(
-                  initialColor: widget.initialColor,
-                  onColorSelected: widget.onColorSelected,
+                  initialColor: widget.controller.initialColor,
+                  onColorSelected: widget.controller.setColor,
                 ),
+                const SizedBox(width: 12),
+                SketchStrokeWidthButton(
+                  initialStrokeWidth: widget.controller.initialStrokeWidth,
+                  isHighlightMode: true,
+                  isEraserMode: false,
+                  onStrokeWidthSelected: widget.controller.setStrokeWidth,
+                ),
+              ],
+
+              // Eraser mode controls: stroke width only
+              if (widget.controller.mode == SketchMode.eraser) ...[
                 const SizedBox(width: 12),
                 _buildDivider(),
                 const SizedBox(width: 12),
                 SketchStrokeWidthButton(
-                  initialStrokeWidth: widget.initialStrokeWidth,
-                  isHighlightMode: true,
-                  onStrokeWidthSelected: widget.onStrokeWidthSelected,
+                  initialStrokeWidth: widget.controller.initialStrokeWidth,
+                  isHighlightMode: false,
+                  isEraserMode: true,
+                  onStrokeWidthSelected: widget.controller.setStrokeWidth,
                 ),
               ],
 
               // Text mode controls: color & font size
-              if (widget.mode == SketchMode.text) ...[
+              if (widget.controller.mode == SketchMode.text) ...[
                 const SizedBox(width: 12),
                 _buildDivider(),
                 const SizedBox(width: 12),
                 SketchColorButton(
-                  initialColor: widget.initialColor,
-                  onColorSelected: widget.onColorSelected,
+                  initialColor: widget.controller.initialColor,
+                  onColorSelected: widget.controller.setColor,
                 ),
                 const SizedBox(width: 12),
-                _buildDivider(),
-                const SizedBox(width: 12),
                 SketchFontSizeButton(
-                  initialFontSize: widget.initialFontSize,
-                  onFontSizeSelected: widget.onFontSizeSelected,
+                  initialFontSize: widget.controller.initialFontSize,
+                  onFontSizeSelected: widget.controller.setFontSize,
                 ),
               ],
             ],
@@ -311,21 +325,19 @@ class _SketchToolbarState extends State<SketchToolbar>
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(8),
           onTap: onPressed,
           child: Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: isSelected
-                  ? Theme.of(context).colorScheme.primary.withAlpha(51)
+                  ? Theme.of(context).colorScheme.primary
                   : Colors.transparent,
-              shape: BoxShape.circle,
+              borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(
               icon,
-              color: isSelected
-                  ? Theme.of(context).colorScheme.primary
-                  : Theme.of(context).colorScheme.onSurface,
+              color: Theme.of(context).colorScheme.onSurface,
               size: 20,
             ),
           ),

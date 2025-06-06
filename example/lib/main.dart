@@ -236,20 +236,39 @@ class _SketchpadExamplePageState extends State<SketchpadExamplePage> {
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(20),
-                  child: MultiCanvasSketchWrapper(
-                    controller: controller, // Use unified controller
-                    isEnabled: isSketchMode,
-                    toolbarPosition: SketchToolbarPosition.bottomCenter,
-                    child: MultiCanvasRegion(
-                      sectionId: "0",
-                      child: SizedBox(
-                        width: double.infinity,
-                        height: double.infinity,
-                        child: inserts.isEmpty
-                            ? _buildEmptyState(isDark)
-                            : Container(),
+                  child: Stack(
+                    children: [
+                      MultiCanvasSketchWrapper(
+                        controller: controller, // Use unified controller
+                        isEnabled: isSketchMode,
+                        child: MultiCanvasRegion(
+                          sectionId: "0",
+                          child: SizedBox(
+                            width: double.infinity,
+                            height: double.infinity,
+                            child: inserts.isEmpty
+                                ? _buildEmptyState(isDark)
+                                : Container(),
+                          ),
+                        ),
                       ),
-                    ),
+                      // Standalone toolbar - can be positioned anywhere!
+                      Positioned(
+                        bottom: 16,
+                        left: 0,
+                        right: 0,
+                        child: Center(
+                          child: SketchToolbar(
+                            controller: controller,
+                            isEnabled: isSketchMode,
+                            enableAnimation: true,
+                            animationDuration:
+                                const Duration(milliseconds: 300),
+                            animationCurve: Curves.easeInOut,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -545,7 +564,9 @@ class _SketchElementsListPageState extends State<SketchElementsListPage> {
                         child: Icon(
                           insert.type == SketchInsertType.text
                               ? Icons.text_fields_rounded
-                              : Icons.edit_rounded,
+                              : insert.type == SketchInsertType.eraser
+                                  ? Icons.cleaning_services_rounded
+                                  : Icons.edit_rounded,
                           color: Colors.white,
                           size: 16,
                         ),
@@ -553,7 +574,9 @@ class _SketchElementsListPageState extends State<SketchElementsListPage> {
                       title: Text(
                         insert.type == SketchInsertType.text
                             ? insert.text ?? 'Text Element'
-                            : 'Drawing (${insert.points.length} points)',
+                            : insert.type == SketchInsertType.eraser
+                                ? 'Eraser (${insert.points.length} points)'
+                                : 'Drawing (${insert.points.length} points)',
                         style: const TextStyle(fontWeight: FontWeight.w500),
                       ),
                       trailing: IconButton(

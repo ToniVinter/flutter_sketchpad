@@ -6,7 +6,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 part 'sketch_insert.freezed.dart';
 part 'sketch_insert.g.dart';
 
-enum SketchInsertType { drawing, text }
+enum SketchInsertType { drawing, text, eraser }
 
 @freezed
 class SketchInsert with _$SketchInsert {

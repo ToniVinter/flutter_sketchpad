@@ -21,7 +21,69 @@ class _SketchColorButtonState extends State<SketchColorButton> {
   @override
   void initState() {
     super.initState();
-    _selectedColor = widget.initialColor;
+    _selectedColor = _getValidColor(widget.initialColor);
+  }
+
+  @override
+  void didUpdateWidget(SketchColorButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    // If initialColor changed, ensure it's valid
+    if (oldWidget.initialColor != widget.initialColor) {
+      final validColor = _getValidColor(widget.initialColor);
+      if (validColor != _selectedColor) {
+        setState(() {
+          _selectedColor = validColor;
+        });
+        // Defer notification to after build phase completes
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          widget.onColorSelected(_selectedColor);
+        });
+      }
+    }
+  }
+
+  List<Color> _getColors() {
+    return const [
+      Colors.black,
+      Colors.white,
+      Color(0xFFFF9500),
+      Color(0xFF4CD964),
+      Color(0xFF5AC8FA),
+      Color(0xFF5856D6),
+      Color(0xFFFF2D55),
+    ];
+  }
+
+  Color _getValidColor(Color currentColor) {
+    final colors = _getColors();
+
+    // If current color is in the list, use it
+    if (colors.contains(currentColor)) {
+      return currentColor;
+    }
+
+    // Otherwise, find the closest color by comparing RGB values
+    Color closest = colors.first;
+    double minDistance = _colorDistance(currentColor, closest);
+
+    for (final color in colors) {
+      final distance = _colorDistance(currentColor, color);
+      if (distance < minDistance) {
+        minDistance = distance;
+        closest = color;
+      }
+    }
+
+    return closest;
+  }
+
+  double _colorDistance(Color c1, Color c2) {
+    // Simple RGB distance calculation
+    final dr = c1.red - c2.red;
+    final dg = c1.green - c2.green;
+    final db = c1.blue - c2.blue;
+    return (dr * dr + dg * dg + db * db).toDouble();
   }
 
   void _onColorSelected(Color color) {
@@ -33,20 +95,9 @@ class _SketchColorButtonState extends State<SketchColorButton> {
 
   @override
   Widget build(BuildContext context) {
-    const colors = [
-      Colors.black,
-      Colors.white,
-      Color(0xFFFF9500),
-      Color(0xFF4CD964),
-      Color(0xFF5AC8FA),
-      Color(0xFF5856D6),
-      Color(0xFFFF2D55),
-    ];
+    final colors = _getColors();
 
     return SketchSettingsOverlay<Color>(
-      targetAnchor: Alignment.topCenter,
-      followerAnchor: Alignment.bottomCenter,
-      offset: const Offset(-32, -24),
       anchorBuilder: (ctx, toggleOverlay) => Tooltip(
         message: 'Select Color',
         child: GestureDetector(
@@ -54,7 +105,6 @@ class _SketchColorButtonState extends State<SketchColorButton> {
           child: Container(
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
-              color: Colors.white.withAlpha(26),
               shape: BoxShape.circle,
               border: Border.all(
                 color: Colors.grey.withAlpha(77),
@@ -84,33 +134,17 @@ class _SketchColorButtonState extends State<SketchColorButton> {
           color: c,
           shape: BoxShape.circle,
           border: Border.all(
-            color: Colors.grey.withAlpha(77),
-            width: 0.5,
+            color: isSelected
+                ? Theme.of(ctx).colorScheme.primary
+                : Colors.grey.withAlpha(77),
+            width: isSelected ? 2.0 : 0.5,
           ),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: Theme.of(ctx).colorScheme.surface,
-                    blurRadius: 4,
-                    spreadRadius: 2,
-                  ),
-                ]
-              : null,
         ),
         child: isSelected
-            ? Center(
-                child: Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withAlpha(230),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.check,
-                    size: 16,
-                    color: c.computeLuminance() > 0.5 ? Colors.black : c,
-                  ),
+            ? Container(
+                margin: const EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
                 ),
               )
             : null,

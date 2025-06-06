@@ -7,12 +7,14 @@ class SketchStrokeWidthButton extends StatefulWidget {
     required this.onStrokeWidthSelected,
     this.initialStrokeWidth = 4.0,
     this.isHighlightMode = false,
+    this.isEraserMode = false,
     super.key,
   });
 
   final double initialStrokeWidth;
   final ValueChanged<double> onStrokeWidthSelected;
   final bool isHighlightMode;
+  final bool isEraserMode;
 
   @override
   State<SketchStrokeWidthButton> createState() =>
@@ -25,7 +27,64 @@ class _SketchStrokeWidthButtonState extends State<SketchStrokeWidthButton> {
   @override
   void initState() {
     super.initState();
-    _selectedStrokeWidth = widget.initialStrokeWidth;
+    _selectedStrokeWidth = _getValidStrokeWidth(widget.initialStrokeWidth);
+  }
+
+  @override
+  void didUpdateWidget(SketchStrokeWidthButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    // If mode changed, ensure selected stroke width is valid for new mode
+    if (oldWidget.isEraserMode != widget.isEraserMode ||
+        oldWidget.isHighlightMode != widget.isHighlightMode) {
+      final validStrokeWidth = _getValidStrokeWidth(_selectedStrokeWidth);
+      if (validStrokeWidth != _selectedStrokeWidth) {
+        setState(() {
+          _selectedStrokeWidth = validStrokeWidth;
+        });
+        // Defer notification to after build phase completes
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          widget.onStrokeWidthSelected(_selectedStrokeWidth);
+        });
+      }
+    }
+  }
+
+  double _getValidStrokeWidth(double currentWidth) {
+    final strokeWidths = _getStrokeWidths();
+
+    // If current width is in the list, use it
+    if (strokeWidths.contains(currentWidth)) {
+      return currentWidth;
+    }
+
+    // Otherwise, find the closest valid option
+    double closest = strokeWidths.first;
+    double minDifference = (currentWidth - closest).abs();
+
+    for (final width in strokeWidths) {
+      final difference = (currentWidth - width).abs();
+      if (difference < minDifference) {
+        minDifference = difference;
+        closest = width;
+      }
+    }
+
+    return closest;
+  }
+
+  List<double> _getStrokeWidths() {
+    return widget.isEraserMode
+        ? [12.0, 16.0, 20.0, 26.0, 32.0] // Larger sizes for eraser
+        : widget.isHighlightMode
+            ? [
+                6.0,
+                8.0,
+                10.0,
+                12.0,
+                16.0
+              ] // Bigger sizes for highlighting (+4 from drawing)
+            : [2.0, 4.0, 6.0, 8.0, 12.0]; // Original sizes for drawing
   }
 
   void _onStrokeWidthSelected(double strokeWidth) {
@@ -37,12 +96,10 @@ class _SketchStrokeWidthButtonState extends State<SketchStrokeWidthButton> {
 
   @override
   Widget build(BuildContext context) {
-    const strokeWidths = [2.0, 4.0, 6.0, 8.0, 12.0];
+    // Get stroke widths for current mode
+    final strokeWidths = _getStrokeWidths();
 
     return SketchSettingsOverlay<double>(
-      targetAnchor: Alignment.topCenter,
-      followerAnchor: Alignment.bottomCenter,
-      offset: const Offset(-32, -24),
       anchorBuilder: (ctx, toggleOverlay) => Tooltip(
         message: widget.isHighlightMode
             ? 'Select Highlight Width'
@@ -52,7 +109,6 @@ class _SketchStrokeWidthButtonState extends State<SketchStrokeWidthButton> {
           child: Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: Colors.white.withAlpha(26),
               shape: BoxShape.circle,
               border: Border.all(
                 color: Colors.grey.withAlpha(77),
@@ -63,10 +119,18 @@ class _SketchStrokeWidthButtonState extends State<SketchStrokeWidthButton> {
               height: 16,
               child: Center(
                 child: Container(
-                  width: _selectedStrokeWidth.clamp(2.0, 16.0),
-                  height: _selectedStrokeWidth.clamp(2.0, 16.0),
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
+                  width: widget.isEraserMode
+                      ? _selectedStrokeWidth.clamp(12.0, 24.0)
+                      : widget.isHighlightMode
+                          ? _selectedStrokeWidth.clamp(6.0, 16.0)
+                          : _selectedStrokeWidth.clamp(2.0, 12.0),
+                  height: widget.isEraserMode
+                      ? _selectedStrokeWidth.clamp(12.0, 24.0)
+                      : widget.isHighlightMode
+                          ? _selectedStrokeWidth.clamp(6.0, 16.0)
+                          : _selectedStrokeWidth.clamp(2.0, 12.0),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.onSurface,
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -84,7 +148,7 @@ class _SketchStrokeWidthButtonState extends State<SketchStrokeWidthButton> {
         decoration: BoxDecoration(
           color: isSelected
               ? Theme.of(ctx).colorScheme.primary.withAlpha(51)
-              : Colors.grey.withAlpha(51),
+              : Colors.transparent,
           shape: BoxShape.circle,
           border: Border.all(
             color: isSelected
@@ -95,11 +159,20 @@ class _SketchStrokeWidthButtonState extends State<SketchStrokeWidthButton> {
         ),
         child: Center(
           child: Container(
-            width: strokeWidth.clamp(2.0, 16.0),
-            height: strokeWidth.clamp(2.0, 16.0),
+            width: widget.isEraserMode
+                ? strokeWidth.clamp(12.0, 24.0)
+                : widget.isHighlightMode
+                    ? strokeWidth.clamp(6.0, 16.0)
+                    : strokeWidth.clamp(2.0, 12.0),
+            height: widget.isEraserMode
+                ? strokeWidth.clamp(12.0, 24.0)
+                : widget.isHighlightMode
+                    ? strokeWidth.clamp(6.0, 16.0)
+                    : strokeWidth.clamp(2.0, 12.0),
             decoration: BoxDecoration(
-              color:
-                  isSelected ? Theme.of(ctx).colorScheme.primary : Colors.white,
+              color: isSelected
+                  ? Theme.of(ctx).colorScheme.primary
+                  : Theme.of(context).colorScheme.onSurface,
               shape: BoxShape.circle,
             ),
           ),

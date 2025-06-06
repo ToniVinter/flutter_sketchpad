@@ -3,35 +3,34 @@ import '../controllers/multi_canvas_sketch_controller.dart';
 import '../models/sketch_insert.dart';
 import '../models/sketch_mode.dart';
 import 'sketch_canvas.dart';
-import 'sketch_toolbar.dart';
 import 'dart:async';
 
 /// A wrapper widget that provides multi-canvas annotation functionality with built-in history.
 ///
 /// Use this wrapper with `MultiCanvasRegion` widgets anywhere below to create
-/// annotation areas that share a single toolbar and automatic history management.
+/// annotation areas that share automatic history management. For the toolbar,
+/// use the separate `StandaloneSketchToolbar` widget.
 ///
-/// ## Toolbar Animation
-///
-/// The toolbar supports smooth animations when appearing/disappearing:
-/// - **enableToolbarAnimation**: Enable/disable animations (default: true)
-/// - **toolbarAnimationDuration**: How long the animation takes (default: 300ms)
-/// - **toolbarAnimationCurve**: Animation easing curve (default: Curves.easeInOut)
-///
-/// Different positions have different animation styles:
-/// - **Top/Bottom Center**: Slides in from above/below with scale effect
-/// - **Corners**: Slides in diagonally from the respective corner with scale effect
-///
-/// Example with custom animation:
+/// Example usage:
 /// ```dart
-/// MultiCanvasSketchWrapper(
-///   controller: controller,
-///   isEnabled: isSketchMode,
-///   toolbarPosition: SketchToolbarPosition.bottomCenter,
-///   enableToolbarAnimation: true,
-///   toolbarAnimationDuration: Duration(milliseconds: 400),
-///   toolbarAnimationCurve: Curves.elasticOut,
-///   child: YourContentWidget(),
+/// Scaffold(
+///   body: Stack(
+///     children: [
+///       MultiCanvasSketchWrapper(
+///         controller: controller,
+///         isEnabled: isSketchMode,
+///         child: YourContentWidget(),
+///       ),
+///       Positioned(
+///         bottom: 20,
+///         left: 20,
+///         child: StandaloneSketchToolbar(
+///           controller: controller,
+///           isEnabled: isSketchMode,
+///         ),
+///       ),
+///     ],
+///   ),
 /// )
 /// ```
 class MultiCanvasSketchWrapper extends StatefulWidget {
@@ -39,10 +38,6 @@ class MultiCanvasSketchWrapper extends StatefulWidget {
     required this.controller,
     required this.child,
     this.isEnabled = false,
-    this.toolbarPosition = SketchToolbarPosition.bottomCenter,
-    this.enableToolbarAnimation = true,
-    this.toolbarAnimationDuration = const Duration(milliseconds: 300),
-    this.toolbarAnimationCurve = Curves.easeInOut,
     super.key,
   });
 
@@ -54,18 +49,6 @@ class MultiCanvasSketchWrapper extends StatefulWidget {
 
   /// Whether annotation mode is currently active
   final bool isEnabled;
-
-  /// Position of the annotation toolbar
-  final SketchToolbarPosition toolbarPosition;
-
-  /// Whether to animate toolbar appearance/disappearance
-  final bool enableToolbarAnimation;
-
-  /// Duration of toolbar animation
-  final Duration toolbarAnimationDuration;
-
-  /// Curve for toolbar animation
-  final Curve toolbarAnimationCurve;
 
   @override
   State<MultiCanvasSketchWrapper> createState() =>
@@ -140,6 +123,16 @@ class _MultiCanvasSketchWrapperState extends State<MultiCanvasSketchWrapper> {
     }
   }
 
+  // Handle remove insert - remove from controller when erased
+  void _handleRemoveInsert(String id) {
+    widget.controller.removeInsert(id);
+
+    // Auto-save to history after removal
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      widget.controller.saveState(widget.controller.inserts);
+    });
+  }
+
   void _debounceHistorySave() {
     // Cancel previous timer
     _historyDebounceTimer?.cancel();
@@ -150,78 +143,13 @@ class _MultiCanvasSketchWrapperState extends State<MultiCanvasSketchWrapper> {
     });
   }
 
-  Widget _buildToolbar() {
-    return SketchToolbar(
-      isEnabled: widget.isEnabled,
-      mode: widget.controller.mode,
-      initialColor: widget.controller.initialColor,
-      initialStrokeWidth: widget.controller.initialStrokeWidth,
-      initialFontSize: widget.controller.initialFontSize,
-      enableAnimation: widget.enableToolbarAnimation,
-      animationDuration: widget.toolbarAnimationDuration,
-      animationCurve: widget.toolbarAnimationCurve,
-      onModeChanged: widget.controller.setMode,
-      onColorSelected: widget.controller.setColor,
-      onStrokeWidthSelected: widget.controller.setStrokeWidth,
-      onFontSizeSelected: widget.controller.setFontSize,
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return _MultiCanvasProvider(
       controller: widget.controller,
       multiCanvasWrapper: this,
-      child: Stack(
-        children: [
-          widget.child,
-          _buildPositionedToolbar(),
-        ],
-      ),
+      child: widget.child,
     );
-  }
-
-  Widget _buildPositionedToolbar() {
-    switch (widget.toolbarPosition) {
-      case SketchToolbarPosition.topCenter:
-        return Positioned(
-          top: 16,
-          left: 0,
-          right: 0,
-          child: Center(child: _buildToolbar()),
-        );
-      case SketchToolbarPosition.topLeft:
-        return Positioned(
-          top: 16,
-          left: 16,
-          child: _buildToolbar(),
-        );
-      case SketchToolbarPosition.topRight:
-        return Positioned(
-          top: 16,
-          right: 16,
-          child: _buildToolbar(),
-        );
-      case SketchToolbarPosition.bottomCenter:
-        return Positioned(
-          bottom: 16,
-          left: 0,
-          right: 0,
-          child: Center(child: _buildToolbar()),
-        );
-      case SketchToolbarPosition.bottomLeft:
-        return Positioned(
-          bottom: 16,
-          left: 16,
-          child: _buildToolbar(),
-        );
-      case SketchToolbarPosition.bottomRight:
-        return Positioned(
-          bottom: 16,
-          right: 16,
-          child: _buildToolbar(),
-        );
-    }
   }
 }
 
@@ -297,6 +225,7 @@ class _MultiCanvasRegionState extends State<MultiCanvasRegion> {
           selectedFontSize: controller.selectedFontSize,
           onSaveInsert: wrapper._handleSaveInsert,
           onUpdateTextInsert: wrapper._handleUpdateTextInsert,
+          onRemoveInsert: wrapper._handleRemoveInsert,
         );
 
         // Remove the InkWell tap functionality since we don't need active canvas selection
@@ -325,14 +254,4 @@ class _MultiCanvasProvider extends InheritedWidget {
   bool updateShouldNotify(_MultiCanvasProvider oldWidget) {
     return oldWidget.controller != controller;
   }
-}
-
-/// Enum for toolbar positioning options
-enum SketchToolbarPosition {
-  topCenter,
-  topLeft,
-  topRight,
-  bottomCenter,
-  bottomLeft,
-  bottomRight,
 }

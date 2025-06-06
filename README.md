@@ -81,35 +81,47 @@ class _MySketchAppState extends State<MySketchApp> {
 
   @override
   Widget build(BuildContext context) {
-    return MultiCanvasSketchWrapper(
-      controller: controller,
-      isEnabled: isSketchMode,
-      toolbarPosition: SketchToolbarPosition.bottomCenter,
-      child: Scaffold(
-        appBar: AppBar(
-          actions: [
-            IconButton(
-              onPressed: () {
-                setState(() {
-                  isSketchMode = !isSketchMode;
-                });
-              },
-              icon: Icon(isSketchMode ? Icons.edit_off : Icons.edit),
+    return Scaffold(
+      appBar: AppBar(
+        actions: [
+          IconButton(
+            onPressed: () {
+              setState(() {
+                isSketchMode = !isSketchMode;
+              });
+            },
+            icon: Icon(isSketchMode ? Icons.edit_off : Icons.edit),
+          ),
+          IconButton(
+            onPressed: controller.canUndo ? () => controller.undo() : null,
+            icon: Icon(Icons.undo),
+          ),
+          IconButton(
+            onPressed: controller.canRedo ? () => controller.redo() : null,
+            icon: Icon(Icons.redo),
+          ),
+        ],
+      ),
+      body: Stack(
+        children: [
+          MultiCanvasSketchWrapper(
+            controller: controller,
+            isEnabled: isSketchMode,
+            child: MultiCanvasRegion(
+              sectionId: "0",
+              child: YourContentWidget(),
             ),
-            IconButton(
-              onPressed: controller.canUndo ? () => controller.undo() : null,
-              icon: Icon(Icons.undo),
+          ),
+          // Toolbar - position it anywhere!
+          Positioned(
+            bottom: 20,
+            left: 20,
+            child: SketchToolbar(
+              controller: controller,
+              isEnabled: isSketchMode,
             ),
-            IconButton(
-              onPressed: controller.canRedo ? () => controller.redo() : null,
-              icon: Icon(Icons.redo),
-            ),
-          ],
-        ),
-        body: MultiCanvasRegion(
-          regionIndex: 0,
-          child: YourContentWidget(),
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -123,42 +135,72 @@ class _MySketchAppState extends State<MySketchApp> {
 Create multiple annotation areas that share a single toolbar:
 
 ```dart
-MultiCanvasSketchWrapper(
-  controller: controller,
-  isEnabled: isSketchMode,
-  toolbarPosition: SketchToolbarPosition.topRight,
-  child: Column(
-    children: [
-      Expanded(
-        child: MultiCanvasRegion(
-          sectionId: "0",
-          child: Container(
-            color: Colors.blue[50],
-            child: Center(child: Text('First Section')),
+Stack(
+  children: [
+    MultiCanvasSketchWrapper(
+      controller: controller,
+      isEnabled: isSketchMode,
+      child: Column(
+        children: [
+          Expanded(
+            child: MultiCanvasRegion(
+              sectionId: "0",
+              child: Container(
+                color: Colors.blue[50],
+                child: Center(child: Text('First Section')),
+              ),
+            ),
           ),
-        ),
-      ),
-      Expanded(
-        child: MultiCanvasRegion(
-          sectionId: "1",
-          child: Container(
-            color: Colors.green[50],
-            child: Center(child: Text('Second Section')),
+          Expanded(
+            child: MultiCanvasRegion(
+              sectionId: "1",
+              child: Container(
+                color: Colors.green[50],
+                child: Center(child: Text('Second Section')),
+              ),
+            ),
           ),
-        ),
+        ],
       ),
-    ],
-  ),
+    ),
+    // Toolbar positioned at top right
+    Positioned(
+      top: 20,
+      right: 20,
+      child: SketchToolbar(
+        controller: controller,
+        isEnabled: isSketchMode,
+      ),
+    ),
+  ],
 )
 ```
 
 ### Custom Toolbar Positioning
 
+Position the toolbar anywhere in your widget tree:
+
 ```dart
-MultiCanvasSketchWrapper(
-  // ... other properties
-  toolbarPosition: SketchToolbarPosition.topRight,
-  child: YourContent(),
+Stack(
+  children: [
+    MultiCanvasSketchWrapper(
+      controller: controller,
+      isEnabled: isSketchMode,
+      child: YourContent(),
+    ),
+         // Position toolbar anywhere you want!
+     Positioned(
+       top: 50,    // Top right corner
+       right: 20,
+       child: SketchToolbar(
+         controller: controller,
+         isEnabled: isSketchMode,
+         enableAnimation: true,
+         animationDuration: Duration(milliseconds: 300),
+         animationCurve: Curves.easeInOut,
+       ),
+     ),
+  ],
 )
 ```
 

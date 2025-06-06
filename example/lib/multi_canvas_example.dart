@@ -1,4 +1,5 @@
 import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_sketchpad/flutter_sketchpad.dart';
 
@@ -58,7 +59,6 @@ class _MultiCanvasExamplePageState extends State<MultiCanvasExamplePage>
   // Animation configuration state
   Duration _animationDuration = const Duration(milliseconds: 350);
   Curve _animationCurve = Curves.easeOutBack;
-  SketchToolbarPosition _toolbarPosition = SketchToolbarPosition.bottomCenter;
 
   // Animation presets for demo
   final List<Map<String, dynamic>> _animationPresets = [
@@ -381,13 +381,26 @@ class _MultiCanvasExamplePageState extends State<MultiCanvasExamplePage>
     });
   }
 
-  // Cycle through toolbar positions
-  void _cycleToolbarPosition() {
-    const positions = SketchToolbarPosition.values;
-    final currentIndex = positions.indexOf(_toolbarPosition);
-    setState(() {
-      _toolbarPosition = positions[(currentIndex + 1) % positions.length];
-    });
+  // Build positioned toolbar based on current selection
+  Widget _buildPositionedToolbar() {
+    if (isLoadingInserts || controller == null) {
+      return const SizedBox.shrink();
+    }
+
+    return Positioned(
+      bottom: 16,
+      left: 0,
+      right: 0,
+      child: Center(
+        child: SketchToolbar(
+          controller: controller!,
+          isEnabled: isSketchMode,
+          enableAnimation: true,
+          animationDuration: _animationDuration,
+          animationCurve: _animationCurve,
+        ),
+      ),
+    );
   }
 
   @override
@@ -395,325 +408,314 @@ class _MultiCanvasExamplePageState extends State<MultiCanvasExamplePage>
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return MultiCanvasSketchWrapper(
-      controller: controller ??
-          MultiCanvasSketchController(), // Provide fallback controller
-      isEnabled: isSketchMode &&
-          !isLoadingInserts &&
-          controller != null, // Disable while loading or null
-      toolbarPosition: _toolbarPosition,
-
-      // Animation configuration
-      enableToolbarAnimation: true,
-      toolbarAnimationDuration: _animationDuration,
-      toolbarAnimationCurve: _animationCurve,
-
-      child: Scaffold(
-        backgroundColor: isDark ? Colors.grey[900] : Colors.grey[50],
-        appBar: AppBar(
-          title: const Text('Multi-Section Annotations'),
-          backgroundColor: isDark ? Colors.grey[900] : Colors.grey[50],
-          elevation: 0,
-          actions: [
-            // Loading indicator
-            if (isLoadingInserts)
-              Container(
-                margin: const EdgeInsets.only(right: 16),
-                child: const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.blue,
-                  ),
-                ),
-              ),
-
-            // Manual sync button
-            Container(
-              margin: const EdgeInsets.only(right: 8),
-              child: IconButton(
-                onPressed:
-                    isLoadingInserts ? null : () => _syncFromController(),
-                icon: Icon(
-                  Icons.save_rounded,
-                  color:
-                      isLoadingInserts ? Colors.grey[400] : Colors.green[600],
-                ),
-                style: IconButton.styleFrom(
-                  backgroundColor:
-                      isLoadingInserts ? Colors.grey[100] : Colors.green[50],
-                ),
-                tooltip: isLoadingInserts ? 'Loading...' : 'Save Current State',
-              ),
-            ),
-
-            // Animation preset cycle button
-            Container(
-              margin: const EdgeInsets.only(right: 8),
-              child: IconButton(
-                onPressed:
-                    isLoadingInserts ? null : () => _cycleAnimationPreset(),
-                icon: Icon(
-                  Icons.animation,
-                  color:
-                      isLoadingInserts ? Colors.grey[400] : Colors.purple[600],
-                ),
-                style: IconButton.styleFrom(
-                  backgroundColor:
-                      isLoadingInserts ? Colors.grey[100] : Colors.purple[50],
-                ),
-                tooltip: isLoadingInserts
-                    ? 'Loading...'
-                    : 'Animation: ${_animationPresets[_currentPresetIndex]['name']}',
-              ),
-            ),
-
-            // Toolbar position cycle button
-            Container(
-              margin: const EdgeInsets.only(right: 8),
-              child: IconButton(
-                onPressed:
-                    isLoadingInserts ? null : () => _cycleToolbarPosition(),
-                icon: Icon(
-                  Icons.dock,
-                  color:
-                      isLoadingInserts ? Colors.grey[400] : Colors.indigo[600],
-                ),
-                style: IconButton.styleFrom(
-                  backgroundColor:
-                      isLoadingInserts ? Colors.grey[100] : Colors.indigo[50],
-                ),
-                tooltip: isLoadingInserts
-                    ? 'Loading...'
-                    : 'Position: ${_toolbarPosition.name}',
-              ),
-            ),
-
-            // Sketch mode toggle - single controller
-            Container(
-              margin: const EdgeInsets.only(right: 8),
-              child: IconButton(
-                onPressed: isLoadingInserts
-                    ? null
-                    : () {
-                        setState(() {
-                          isSketchMode = !isSketchMode;
-                        });
-                      },
-                icon: Icon(
-                  isSketchMode ? Icons.edit_off : Icons.edit,
-                  color: isLoadingInserts
-                      ? Colors.grey[400]
-                      : (isSketchMode ? Colors.orange[600] : Colors.grey[600]),
-                ),
-                style: IconButton.styleFrom(
-                  backgroundColor: isLoadingInserts
-                      ? Colors.grey[100]
-                      : (isSketchMode ? Colors.orange[50] : Colors.transparent),
-                ),
-                tooltip: isLoadingInserts
-                    ? 'Loading...'
-                    : (isSketchMode ? 'Exit Sketch Mode' : 'Enter Sketch Mode'),
-              ),
-            ),
-
-            // History controls - single controller
-            Container(
-              margin: const EdgeInsets.only(right: 8),
-              child: IconButton(
-                onPressed: (controller?.canUndo == true && !isLoadingInserts)
-                    ? () => _undo()
-                    : null,
-                icon: Icon(
-                  Icons.undo_rounded,
-                  color: (controller?.canUndo == true && !isLoadingInserts)
-                      ? Colors.blue[600]
-                      : Colors.grey[400],
-                ),
-                tooltip: isLoadingInserts ? 'Loading...' : 'Undo',
-              ),
-            ),
-
-            // Redo button
-            Container(
-              margin: const EdgeInsets.only(right: 16),
-              child: IconButton(
-                onPressed: (controller?.canRedo == true && !isLoadingInserts)
-                    ? () => _redo()
-                    : null,
-                icon: Icon(
-                  Icons.redo_rounded,
-                  color: (controller?.canRedo == true && !isLoadingInserts)
-                      ? Colors.blue[600]
-                      : Colors.grey[400],
-                ),
-                tooltip: isLoadingInserts ? 'Loading...' : 'Redo',
-              ),
-            ),
-          ],
-        ),
-        body: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header
-              Container(
-                margin: const EdgeInsets.only(bottom: 24),
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Colors.blue[600]!, Colors.blue[400]!],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.description,
-                      color: Colors.white,
-                      size: 32,
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            isLoadingInserts
-                                ? 'Loading Annotations...'
-                                : 'Animated Toolbar Demo',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            isLoadingInserts
-                                ? 'Fetching annotations from server...'
-                                : 'Animation: ${_animationPresets[_currentPresetIndex]['name']} • Position: ${_toolbarPosition.name}',
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.9),
-                              fontSize: 14,
-                            ),
-                          ),
-                          if (isLoadingInserts) ...[
-                            const SizedBox(height: 8),
-                            Row(
-                              children: [
-                                const SizedBox(
-                                  width: 12,
-                                  height: 12,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 1.5,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  'Loading 8 annotations...',
-                                  style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.8),
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ],
+      controller: controller ?? MultiCanvasSketchController(),
+      isEnabled: isSketchMode && !isLoadingInserts && controller != null,
+      child: Stack(
+        children: [
+          Scaffold(
+            backgroundColor: isDark ? Colors.grey[900] : Colors.grey[50],
+            appBar: AppBar(
+              title: const Text('Multi-Section Annotations'),
+              backgroundColor: isDark ? Colors.grey[900] : Colors.grey[50],
+              elevation: 0,
+              actions: [
+                // Loading indicator
+                if (isLoadingInserts)
+                  Container(
+                    margin: const EdgeInsets.only(right: 16),
+                    child: const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.blue,
                       ),
                     ),
-                  ],
-                ),
-              ),
-
-              // Sections
-              ...sections.asMap().entries.map((entry) {
-                final index = entry.key;
-                final section = entry.value;
-
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                    color: section['color'] as Color?,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: Colors.grey.withValues(alpha: 0.2),
-                      width: 1,
-                    ),
                   ),
-                  child: FadeInMultiCanvasRegion(
-                    sectionId: index.toString(),
-                    fadeAnimation: _fadeAnimation,
-                    isLoadingInserts: isLoadingInserts,
-                    child: Container(
-                      constraints: const BoxConstraints(minHeight: 200),
-                      padding: const EdgeInsets.all(24),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
+
+                // Manual sync button
+                Container(
+                  margin: const EdgeInsets.only(right: 8),
+                  child: IconButton(
+                    onPressed:
+                        isLoadingInserts ? null : () => _syncFromController(),
+                    icon: Icon(
+                      Icons.save_rounded,
+                      color: isLoadingInserts
+                          ? Colors.grey[400]
+                          : Colors.green[600],
+                    ),
+                    style: IconButton.styleFrom(
+                      backgroundColor: isLoadingInserts
+                          ? Colors.grey[100]
+                          : Colors.green[50],
+                    ),
+                    tooltip:
+                        isLoadingInserts ? 'Loading...' : 'Save Current State',
+                  ),
+                ),
+
+                // Animation preset cycle button
+                Container(
+                  margin: const EdgeInsets.only(right: 8),
+                  child: IconButton(
+                    onPressed:
+                        isLoadingInserts ? null : () => _cycleAnimationPreset(),
+                    icon: Icon(
+                      Icons.animation,
+                      color: isLoadingInserts
+                          ? Colors.grey[400]
+                          : Colors.purple[600],
+                    ),
+                    style: IconButton.styleFrom(
+                      backgroundColor: isLoadingInserts
+                          ? Colors.grey[100]
+                          : Colors.purple[50],
+                    ),
+                    tooltip: isLoadingInserts
+                        ? 'Loading...'
+                        : 'Animation: ${_animationPresets[_currentPresetIndex]['name']}',
+                  ),
+                ),
+                // Sketch mode toggle - single controller
+                Container(
+                  margin: const EdgeInsets.only(right: 8),
+                  child: IconButton(
+                    onPressed: isLoadingInserts
+                        ? null
+                        : () {
+                            setState(() {
+                              isSketchMode = !isSketchMode;
+                            });
+                          },
+                    icon: Icon(
+                      isSketchMode ? Icons.edit_off : Icons.edit,
+                      color: isLoadingInserts
+                          ? Colors.grey[400]
+                          : (isSketchMode
+                              ? Colors.orange[600]
+                              : Colors.grey[600]),
+                    ),
+                    style: IconButton.styleFrom(
+                      backgroundColor: isLoadingInserts
+                          ? Colors.grey[100]
+                          : (isSketchMode
+                              ? Colors.orange[50]
+                              : Colors.transparent),
+                    ),
+                    tooltip: isLoadingInserts
+                        ? 'Loading...'
+                        : (isSketchMode
+                            ? 'Exit Sketch Mode'
+                            : 'Enter Sketch Mode'),
+                  ),
+                ),
+
+                // History controls - single controller
+                Container(
+                  margin: const EdgeInsets.only(right: 8),
+                  child: IconButton(
+                    onPressed:
+                        (controller?.canUndo == true && !isLoadingInserts)
+                            ? () => _undo()
+                            : null,
+                    icon: Icon(
+                      Icons.undo_rounded,
+                      color: (controller?.canUndo == true && !isLoadingInserts)
+                          ? Colors.blue[600]
+                          : Colors.grey[400],
+                    ),
+                    tooltip: isLoadingInserts ? 'Loading...' : 'Undo',
+                  ),
+                ),
+
+                // Redo button
+                Container(
+                  margin: const EdgeInsets.only(right: 16),
+                  child: IconButton(
+                    onPressed:
+                        (controller?.canRedo == true && !isLoadingInserts)
+                            ? () => _redo()
+                            : null,
+                    icon: Icon(
+                      Icons.redo_rounded,
+                      color: (controller?.canRedo == true && !isLoadingInserts)
+                          ? Colors.blue[600]
+                          : Colors.grey[400],
+                    ),
+                    tooltip: isLoadingInserts ? 'Loading...' : 'Redo',
+                  ),
+                ),
+              ],
+            ),
+            body: SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Header
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 24),
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Colors.blue[600]!, Colors.blue[400]!],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.description,
+                          color: Colors.white,
+                          size: 32,
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: Colors.grey[200],
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Icon(
-                                  section['icon'] as IconData,
-                                  color: Colors.grey[600],
-                                  size: 20,
+                              Text(
+                                isLoadingInserts
+                                    ? 'Loading Annotations...'
+                                    : 'Animated Toolbar Demo',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                              const SizedBox(height: 4),
+                              Text(
+                                isLoadingInserts
+                                    ? 'Fetching annotations from server...'
+                                    : 'Animation',
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.9),
+                                  fontSize: 14,
+                                ),
+                              ),
+                              if (isLoadingInserts) ...[
+                                const SizedBox(height: 8),
+                                Row(
                                   children: [
-                                    Text(
-                                      section['title'] as String,
-                                      style: const TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
+                                    const SizedBox(
+                                      width: 12,
+                                      height: 12,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 1.5,
+                                        color: Colors.white,
                                       ),
                                     ),
+                                    const SizedBox(width: 8),
                                     Text(
-                                      section['subtitle'] as String,
+                                      'Loading 8 annotations...',
                                       style: TextStyle(
-                                        fontSize: 14,
-                                        color: Colors.grey[600],
+                                        color:
+                                            Colors.white.withValues(alpha: 0.8),
+                                        fontSize: 12,
                                       ),
                                     ),
                                   ],
                                 ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Sections
+                  ...sections.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final section = entry.value;
+
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        color: section['color'] as Color?,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: Colors.grey.withValues(alpha: 0.2),
+                          width: 1,
+                        ),
+                      ),
+                      child: FadeInMultiCanvasRegion(
+                        sectionId: index.toString(),
+                        fadeAnimation: _fadeAnimation,
+                        isLoadingInserts: isLoadingInserts,
+                        child: Container(
+                          constraints: const BoxConstraints(minHeight: 200),
+                          padding: const EdgeInsets.all(24),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey[200],
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Icon(
+                                      section['icon'] as IconData,
+                                      color: Colors.grey[600],
+                                      size: 20,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          section['title'] as String,
+                                          style: const TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        Text(
+                                          section['subtitle'] as String,
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            color: Colors.grey[600],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                section['content'] as String,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  height: 1.5,
+                                ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 16),
-                          Text(
-                            section['content'] as String,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              height: 1.5,
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
-                    ),
-                  ),
-                );
-              }),
+                    );
+                  }),
 
-              // Bottom spacing for toolbar
-              const SizedBox(height: 100),
-            ],
+                  // Bottom spacing for toolbar
+                  const SizedBox(height: 100),
+                ],
+              ),
+            ),
           ),
-        ),
+          // Standalone toolbar positioned based on current selection
+          _buildPositionedToolbar(),
+        ],
       ),
     );
   }

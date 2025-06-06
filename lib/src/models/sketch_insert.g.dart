@@ -44,6 +44,7 @@ Map<String, dynamic> _$$SketchInsertImplToJson(_$SketchInsertImpl instance) =>
 const _$SketchInsertTypeEnumMap = {
   SketchInsertType.drawing: 'drawing',
   SketchInsertType.text: 'text',
+  SketchInsertType.eraser: 'eraser',
 };
 
 Value? _$JsonConverterFromJson<Json, Value>(
