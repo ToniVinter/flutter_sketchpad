@@ -12,7 +12,8 @@ _$SketchInsertImpl _$$SketchInsertImplFromJson(Map<String, dynamic> json) =>
       sketchId: json['sketchId'] as String?,
       sectionId: json['sectionId'] as String,
       points: const OffsetListConverter().fromJson(json['points'] as List),
-      color: const ColorConverter().fromJson((json['color'] as num).toInt()),
+      color: _$JsonConverterFromJson<int, Color>(
+          json['color'], const ColorConverter().fromJson),
       strokeWidth: (json['strokeWidth'] as num).toDouble(),
       type: $enumDecodeNullable(_$SketchInsertTypeEnumMap, json['type']) ??
           SketchInsertType.drawing,
@@ -31,7 +32,10 @@ Map<String, dynamic> _$$SketchInsertImplToJson(_$SketchInsertImpl instance) =>
       'sketchId': instance.sketchId,
       'sectionId': instance.sectionId,
       'points': const OffsetListConverter().toJson(instance.points),
-      'color': const ColorConverter().toJson(instance.color),
+      if (_$JsonConverterToJson<int, Color>(
+              instance.color, const ColorConverter().toJson)
+          case final value?)
+        'color': value,
       'strokeWidth': instance.strokeWidth,
       'type': _$SketchInsertTypeEnumMap[instance.type]!,
       'text': instance.text,
@@ -41,17 +45,17 @@ Map<String, dynamic> _$$SketchInsertImplToJson(_$SketchInsertImpl instance) =>
       'createdAt': instance.createdAt?.toIso8601String(),
     };
 
-const _$SketchInsertTypeEnumMap = {
-  SketchInsertType.drawing: 'drawing',
-  SketchInsertType.text: 'text',
-  SketchInsertType.eraser: 'eraser',
-};
-
 Value? _$JsonConverterFromJson<Json, Value>(
   Object? json,
   Value? Function(Json json) fromJson,
 ) =>
     json == null ? null : fromJson(json as Json);
+
+const _$SketchInsertTypeEnumMap = {
+  SketchInsertType.drawing: 'drawing',
+  SketchInsertType.text: 'text',
+  SketchInsertType.eraser: 'eraser',
+};
 
 Json? _$JsonConverterToJson<Json, Value>(
   Value? value,

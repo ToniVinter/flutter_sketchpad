@@ -21,7 +21,7 @@ class SketchInsert with _$SketchInsert {
     /// ID of the section within the content
     required String sectionId,
     @OffsetListConverter() required List<Offset> points,
-    @ColorConverter() required Color color,
+    @ColorConverter() Color? color,
     required double strokeWidth,
     @Default(SketchInsertType.drawing) SketchInsertType type,
     String? text,

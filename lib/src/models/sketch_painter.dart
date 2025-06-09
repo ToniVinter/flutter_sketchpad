@@ -27,10 +27,14 @@ class SketchInsertPainter extends CustomPainter {
     // Draw all saved inserts in chronological order (creation order)
     // This ensures proper layering where newer content can appear over erased areas
     for (final insert in inserts) {
-      if (insert.type == SketchInsertType.drawing) {
-        _drawPath(canvas, insert.points, insert.color, insert.strokeWidth);
-      } else if (insert.type == SketchInsertType.eraser) {
+      if (insert.type == SketchInsertType.eraser) {
+        // Use blend mode clear for eraser types
         _drawEraserPath(canvas, insert.points, insert.strokeWidth);
+      } else {
+        // Use normal drawing for other types
+        // Non-eraser inserts should always have a color, but fallback to black just in case
+        _drawPath(canvas, insert.points, insert.color ?? Colors.black,
+            insert.strokeWidth);
       }
     }
 

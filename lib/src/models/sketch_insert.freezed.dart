@@ -30,8 +30,12 @@ mixin _$SketchInsert {
   String get sectionId => throw _privateConstructorUsedError;
   @OffsetListConverter()
   List<Offset> get points => throw _privateConstructorUsedError;
+
+  /// Color for drawing/text. Not used for eraser types.
+  /// For eraser types, this should be null or transparent.
+  @JsonKey(includeIfNull: false)
   @ColorConverter()
-  Color get color => throw _privateConstructorUsedError;
+  Color? get color => throw _privateConstructorUsedError;
   double get strokeWidth => throw _privateConstructorUsedError;
   SketchInsertType get type => throw _privateConstructorUsedError;
   String? get text => throw _privateConstructorUsedError;
@@ -61,7 +65,7 @@ abstract class $SketchInsertCopyWith<$Res> {
       String? sketchId,
       String sectionId,
       @OffsetListConverter() List<Offset> points,
-      @ColorConverter() Color color,
+      @JsonKey(includeIfNull: false) @ColorConverter() Color? color,
       double strokeWidth,
       SketchInsertType type,
       String? text,
@@ -89,7 +93,7 @@ class _$SketchInsertCopyWithImpl<$Res, $Val extends SketchInsert>
     Object? sketchId = freezed,
     Object? sectionId = null,
     Object? points = null,
-    Object? color = null,
+    Object? color = freezed,
     Object? strokeWidth = null,
     Object? type = null,
     Object? text = freezed,
@@ -114,10 +118,10 @@ class _$SketchInsertCopyWithImpl<$Res, $Val extends SketchInsert>
           ? _value.points
           : points // ignore: cast_nullable_to_non_nullable
               as List<Offset>,
-      color: null == color
+      color: freezed == color
           ? _value.color
           : color // ignore: cast_nullable_to_non_nullable
-              as Color,
+              as Color?,
       strokeWidth: null == strokeWidth
           ? _value.strokeWidth
           : strokeWidth // ignore: cast_nullable_to_non_nullable
@@ -159,7 +163,7 @@ abstract class _$$SketchInsertImplCopyWith<$Res>
       String? sketchId,
       String sectionId,
       @OffsetListConverter() List<Offset> points,
-      @ColorConverter() Color color,
+      @JsonKey(includeIfNull: false) @ColorConverter() Color? color,
       double strokeWidth,
       SketchInsertType type,
       String? text,
@@ -185,7 +189,7 @@ class __$$SketchInsertImplCopyWithImpl<$Res>
     Object? sketchId = freezed,
     Object? sectionId = null,
     Object? points = null,
-    Object? color = null,
+    Object? color = freezed,
     Object? strokeWidth = null,
     Object? type = null,
     Object? text = freezed,
@@ -210,10 +214,10 @@ class __$$SketchInsertImplCopyWithImpl<$Res>
           ? _value._points
           : points // ignore: cast_nullable_to_non_nullable
               as List<Offset>,
-      color: null == color
+      color: freezed == color
           ? _value.color
           : color // ignore: cast_nullable_to_non_nullable
-              as Color,
+              as Color?,
       strokeWidth: null == strokeWidth
           ? _value.strokeWidth
           : strokeWidth // ignore: cast_nullable_to_non_nullable
@@ -250,7 +254,7 @@ class _$SketchInsertImpl implements _SketchInsert {
       this.sketchId,
       required this.sectionId,
       @OffsetListConverter() required final List<Offset> points,
-      @ColorConverter() required this.color,
+      @JsonKey(includeIfNull: false) @ColorConverter() this.color,
       required this.strokeWidth,
       this.type = SketchInsertType.drawing,
       this.text,
@@ -282,9 +286,12 @@ class _$SketchInsertImpl implements _SketchInsert {
     return EqualUnmodifiableListView(_points);
   }
 
+  /// Color for drawing/text. Not used for eraser types.
+  /// For eraser types, this should be null or transparent.
   @override
+  @JsonKey(includeIfNull: false)
   @ColorConverter()
-  final Color color;
+  final Color? color;
   @override
   final double strokeWidth;
   @override
@@ -367,7 +374,7 @@ abstract class _SketchInsert implements SketchInsert {
       final String? sketchId,
       required final String sectionId,
       @OffsetListConverter() required final List<Offset> points,
-      @ColorConverter() required final Color color,
+      @JsonKey(includeIfNull: false) @ColorConverter() final Color? color,
       required final double strokeWidth,
       final SketchInsertType type,
       final String? text,
@@ -392,9 +399,13 @@ abstract class _SketchInsert implements SketchInsert {
   @override
   @OffsetListConverter()
   List<Offset> get points;
+
+  /// Color for drawing/text. Not used for eraser types.
+  /// For eraser types, this should be null or transparent.
   @override
+  @JsonKey(includeIfNull: false)
   @ColorConverter()
-  Color get color;
+  Color? get color;
   @override
   double get strokeWidth;
   @override

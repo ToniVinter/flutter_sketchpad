@@ -84,6 +84,9 @@ class _SketchpadExamplePageState extends State<SketchpadExamplePage> {
 
     // Only need to listen to one controller
     controller.addListener(_onControllerChanged);
+
+    // Test the eraser serialization fix
+    _testEraserSerialization();
   }
 
   @override
@@ -112,6 +115,42 @@ class _SketchpadExamplePageState extends State<SketchpadExamplePage> {
 
   bool get canUndo => controller.canUndo;
   bool get canRedo => controller.canRedo;
+
+  /// Test function to demonstrate proper eraser serialization
+  void _testEraserSerialization() {
+    // Create a drawing insert
+    const drawingInsert = SketchInsert(
+      id: 'drawing-1',
+      sectionId: 'test',
+      type: SketchInsertType.drawing,
+      points: [Offset(0, 0), Offset(10, 10)],
+      color: Colors.red,
+      strokeWidth: 2.0,
+    );
+
+    // Create an eraser insert (no color should be saved)
+    const eraserInsert = SketchInsert(
+      id: 'eraser-1',
+      sectionId: 'test',
+      type: SketchInsertType.eraser,
+      points: [Offset(5, 5), Offset(15, 15)],
+      color: null, // Eraser doesn't need color
+      strokeWidth: 10.0,
+    );
+
+    // Test JSON serialization
+    final drawingJson = drawingInsert.toJson();
+    final eraserJson = eraserInsert.toJson();
+
+    print('Drawing JSON: $drawingJson');
+    print('Eraser JSON: $eraserJson');
+
+    // Verify that eraser JSON doesn't contain color
+    assert(!eraserJson.containsKey('color'), 'Eraser should not save color!');
+    assert(drawingJson.containsKey('color'), 'Drawing should save color!');
+
+    print('✅ Eraser serialization test passed!');
+  }
 
   @override
   Widget build(BuildContext context) {

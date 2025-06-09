@@ -116,7 +116,7 @@ class _SketchCanvasState extends State<SketchCanvas> {
             inserts: _sectionInserts,
             currentPoints: _drawingController.currentDrawingPoints,
             currentStrokeWidth: _getStrokeWidth(),
-            currentColor: _getDrawingColor(),
+            currentColor: _getDrawingColor() ?? Colors.transparent,
             currentMode: _currentMode,
           ),
           child: Container(
@@ -332,7 +332,12 @@ class _SketchCanvasState extends State<SketchCanvas> {
         : widget.selectedStrokeWidth;
   }
 
-  Color _getDrawingColor() {
+  Color? _getDrawingColor() {
+    // Return null for eraser mode since erasers don't use color
+    if (_currentMode == SketchMode.eraser) {
+      return null;
+    }
+
     return _currentMode == SketchMode.highlighting
         ? widget.selectedColor.withValues(alpha: 0.3)
         : widget.selectedColor;
@@ -351,15 +356,17 @@ class _SketchCanvasState extends State<SketchCanvas> {
   void _saveCurrentDrawing() {
     final points = _drawingController.getCurrentPointsForSave();
     if (points.length > 1) {
+      final insertType = _currentMode == SketchMode.highlighting
+          ? SketchInsertType.drawing
+          : _currentMode == SketchMode.eraser
+              ? SketchInsertType.eraser
+              : SketchInsertType.drawing;
+
       widget.onSaveInsert(
         SketchInsert(
           id: DateTime.now().millisecondsSinceEpoch.toString(),
           sectionId: widget.sectionId,
-          type: _currentMode == SketchMode.highlighting
-              ? SketchInsertType.drawing
-              : _currentMode == SketchMode.eraser
-                  ? SketchInsertType.eraser
-                  : SketchInsertType.drawing,
+          type: insertType,
           points: points,
           color: _getDrawingColor(),
           strokeWidth: _getStrokeWidth(),
@@ -454,7 +461,7 @@ class DrawingController {
     onStateChanged();
   }
 
-  void finishDrawing(String sectionId, double strokeWidth, Color color,
+  void finishDrawing(String sectionId, double strokeWidth, Color? color,
       SketchInsertType type) {
     if (!_isDrawing) return;
 
@@ -465,7 +472,8 @@ class DrawingController {
           sectionId: sectionId,
           type: type,
           points: List<Offset>.from(_currentDrawingPoints),
-          color: color,
+          // Only include color for non-eraser types
+          color: type == SketchInsertType.eraser ? null : color,
           strokeWidth: strokeWidth,
         ),
       );

@@ -217,6 +217,36 @@ class _MultiCanvasExamplePageState extends State<MultiCanvasExamplePage>
         fontSize: 14.0,
         createdAt: now.subtract(const Duration(hours: 1)),
       ),
+
+      // Additional text to be erased
+      SketchInsert(
+        id: 'temp_note',
+        sectionId: '0',
+        points: const [],
+        color: Colors.grey,
+        strokeWidth: 2.0,
+        type: SketchInsertType.text,
+        text: 'Old idea',
+        textPosition: const Offset(180, 95),
+        fontSize: 12.0,
+        createdAt: now.subtract(const Duration(minutes: 50)),
+      ),
+
+      // Eraser: Cross out the old text
+      SketchInsert(
+        id: 'eraser_3',
+        sectionId: '0',
+        points: const [
+          Offset(175, 90),
+          Offset(210, 100),
+          Offset(205, 95),
+          Offset(180, 105),
+        ],
+        color: null, // Eraser doesn't use color
+        strokeWidth: 12.0,
+        type: SketchInsertType.eraser,
+        createdAt: now.subtract(const Duration(minutes: 35)),
+      ),
     ]);
 
     // Sample inserts for section 1 (Design Ideas)
@@ -244,6 +274,22 @@ class _MultiCanvasExamplePageState extends State<MultiCanvasExamplePage>
         textPosition: const Offset(200, 130),
         fontSize: 12.0,
         createdAt: now.subtract(const Duration(minutes: 30)),
+      ),
+
+      // Eraser: Remove part of the circle (simulating editing)
+      SketchInsert(
+        id: 'eraser_2',
+        sectionId: '1',
+        points: const [
+          Offset(140, 105),
+          Offset(145, 110),
+          Offset(142, 115),
+          Offset(138, 112),
+        ],
+        color: null, // Eraser doesn't use color
+        strokeWidth: 6.0,
+        type: SketchInsertType.eraser,
+        createdAt: now.subtract(const Duration(minutes: 25)),
       ),
     ]);
 
@@ -275,6 +321,22 @@ class _MultiCanvasExamplePageState extends State<MultiCanvasExamplePage>
         textPosition: const Offset(150, 90),
         fontSize: 13.0,
         createdAt: now.subtract(const Duration(minutes: 15)),
+      ),
+
+      // Eraser: Remove part of the underline (simulating correction)
+      SketchInsert(
+        id: 'eraser_1',
+        sectionId: '2',
+        points: const [
+          Offset(100, 90),
+          Offset(120, 90),
+          Offset(115, 95),
+          Offset(105, 100),
+        ],
+        color: null, // Eraser doesn't use color
+        strokeWidth: 8.0,
+        type: SketchInsertType.eraser,
+        createdAt: now.subtract(const Duration(minutes: 12)),
       ),
     ]);
 
