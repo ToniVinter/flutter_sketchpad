@@ -171,13 +171,13 @@
     },
     {
       "name": "freezed",
-      "rootUri": "file:///Users/vinterantonio/.pub-cache/hosted/pub.dev/freezed-3.0.6",
+      "rootUri": "file:///Users/vinterantonio/.pub-cache/hosted/pub.dev/freezed-2.5.8",
       "packageUri": "lib/",
-      "languageVersion": "3.6"
+      "languageVersion": "3.0"
     },
     {
       "name": "freezed_annotation",
-      "rootUri": "file:///Users/vinterantonio/.pub-cache/hosted/pub.dev/freezed_annotation-3.0.0",
+      "rootUri": "file:///Users/vinterantonio/.pub-cache/hosted/pub.dev/freezed_annotation-2.4.4",
       "packageUri": "lib/",
       "languageVersion": "3.0"
     },
@@ -458,7 +458,7 @@
       "languageVersion": "3.0"
     }
   ],
-  "generated": "2025-06-09T09:19:41.667577Z",
+  "generated": "2025-06-09T09:36:51.731816Z",
   "generator": "pub",
   "generatorVersion": "3.6.1",
   "flutterRoot": "file:///opt/homebrew/Caskroom/flutter/3.19.0/flutter",
