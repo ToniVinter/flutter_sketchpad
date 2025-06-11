@@ -32,10 +32,8 @@ Map<String, dynamic> _$$SketchInsertImplToJson(_$SketchInsertImpl instance) =>
       'sketchId': instance.sketchId,
       'sectionId': instance.sectionId,
       'points': const OffsetListConverter().toJson(instance.points),
-      if (_$JsonConverterToJson<int, Color>(
-              instance.color, const ColorConverter().toJson)
-          case final value?)
-        'color': value,
+      'color': _$JsonConverterToJson<int, Color>(
+          instance.color, const ColorConverter().toJson),
       'strokeWidth': instance.strokeWidth,
       'type': _$SketchInsertTypeEnumMap[instance.type]!,
       'text': instance.text,

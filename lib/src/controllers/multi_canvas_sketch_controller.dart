@@ -1,11 +1,10 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/sketch_insert.dart';
 import '../models/sketch_mode.dart';
 
 /// Unified controller for managing multiple sketch canvases with built-in history.
-///
-/// This controller combines sketch state management and history functionality
-/// into a single, convenient controller for easier usage.
+/// Automatically saves state after drawing operations complete.
 class MultiCanvasSketchController extends ChangeNotifier {
   MultiCanvasSketchController({
     this.initialColor = const Color(0xFF000000),
@@ -14,9 +13,9 @@ class MultiCanvasSketchController extends ChangeNotifier {
     this.maxHistorySteps = 50,
     List<SketchInsert>? defaultInserts,
   }) {
-    _selectedColor = initialColor;
-    _selectedStrokeWidth = initialStrokeWidth;
-    _selectedFontSize = initialFontSize;
+    _color = initialColor;
+    _strokeWidth = initialStrokeWidth;
+    _fontSize = initialFontSize;
 
     // Load default inserts if provided
     if (defaultInserts != null) {
@@ -37,9 +36,9 @@ class MultiCanvasSketchController extends ChangeNotifier {
 
   // ===== SKETCH STATE =====
   SketchMode _mode = SketchMode.none;
-  late Color _selectedColor;
-  late double _selectedStrokeWidth;
-  late double _selectedFontSize;
+  late Color _color;
+  late double _strokeWidth;
+  late double _fontSize;
 
   // ===== INSERT MANAGEMENT =====
   final List<SketchInsert> _inserts = [];
@@ -49,8 +48,12 @@ class MultiCanvasSketchController extends ChangeNotifier {
 
   // ===== HISTORY STATE =====
   final List<List<SketchInsert>> _history = [];
-  int _currentIndex = -1;
+  int _historyIndex = -1;
   bool _isUndoRedoOperation = false;
+
+  // ===== AUTO-SAVE STATE =====
+  Timer? _autoSaveTimer;
+  static const Duration _autoSaveDelay = Duration(milliseconds: 300);
 
   // ===== SKETCH GETTERS =====
 
@@ -58,13 +61,13 @@ class MultiCanvasSketchController extends ChangeNotifier {
   SketchMode get mode => _mode;
 
   /// Currently selected color
-  Color get selectedColor => _selectedColor;
+  Color get selectedColor => _color;
 
   /// Currently selected stroke width
-  double get selectedStrokeWidth => _selectedStrokeWidth;
+  double get selectedStrokeWidth => _strokeWidth;
 
   /// Currently selected font size
-  double get selectedFontSize => _selectedFontSize;
+  double get selectedFontSize => _fontSize;
 
   // ===== INSERT GETTERS =====
 
@@ -82,13 +85,13 @@ class MultiCanvasSketchController extends ChangeNotifier {
   // ===== HISTORY GETTERS =====
 
   /// Whether an undo operation is possible
-  bool get canUndo => _currentIndex > 0;
+  bool get canUndo => _historyIndex > 0;
 
   /// Whether a redo operation is possible
-  bool get canRedo => _currentIndex < _history.length - 1;
+  bool get canRedo => _historyIndex < _history.length - 1;
 
   /// Current history index (for debugging)
-  int get currentIndex => _currentIndex;
+  int get currentIndex => _historyIndex;
 
   /// Total history length (for debugging)
   int get historyLength => _history.length;
@@ -118,19 +121,19 @@ class MultiCanvasSketchController extends ChangeNotifier {
 
   /// Change the selected color
   void setColor(Color color) {
-    _selectedColor = color;
+    _color = color;
     notifyListeners();
   }
 
   /// Change the selected stroke width
   void setStrokeWidth(double strokeWidth) {
-    _selectedStrokeWidth = strokeWidth;
+    _strokeWidth = strokeWidth;
     notifyListeners();
   }
 
   /// Change the selected font size
   void setFontSize(double fontSize) {
-    _selectedFontSize = fontSize;
+    _fontSize = fontSize;
     notifyListeners();
   }
 
@@ -143,6 +146,11 @@ class MultiCanvasSketchController extends ChangeNotifier {
       _inserts[existingIndex] = insert;
     } else {
       _inserts.add(insert);
+    }
+
+    // Auto-save to history after drawing stops (debounced)
+    if (!_isUndoRedoOperation) {
+      _scheduleAutoSave();
     }
     notifyListeners();
   }
@@ -175,24 +183,24 @@ class MultiCanvasSketchController extends ChangeNotifier {
     if (_isUndoRedoOperation) return;
 
     // Skip if identical to last state (useful for preventing duplicate saves)
-    if (skipDuplicates && _history.isNotEmpty && _currentIndex >= 0) {
-      final lastState = _history[_currentIndex];
+    if (skipDuplicates && _history.isNotEmpty && _historyIndex >= 0) {
+      final lastState = _history[_historyIndex];
       if (_areStatesEqual(lastState, inserts)) return;
     }
 
     // Remove any future history if we're in the middle of the stack
-    if (_currentIndex < _history.length - 1) {
-      _history.removeRange(_currentIndex + 1, _history.length);
+    if (_historyIndex < _history.length - 1) {
+      _history.removeRange(_historyIndex + 1, _history.length);
     }
 
     // Add current state to history
     _history.add(List<SketchInsert>.from(inserts));
-    _currentIndex++;
+    _historyIndex++;
 
     // Limit history size to prevent memory issues
     if (_history.length > maxHistorySteps) {
       _history.removeAt(0);
-      _currentIndex--;
+      _historyIndex--;
     }
 
     notifyListeners();
@@ -205,8 +213,8 @@ class MultiCanvasSketchController extends ChangeNotifier {
     if (!canUndo) return null;
 
     _isUndoRedoOperation = true;
-    _currentIndex--;
-    final state = List<SketchInsert>.from(_history[_currentIndex]);
+    _historyIndex--;
+    final state = List<SketchInsert>.from(_history[_historyIndex]);
 
     // Update the controller's internal state to match the history
     _inserts.clear();
@@ -225,8 +233,8 @@ class MultiCanvasSketchController extends ChangeNotifier {
     if (!canRedo) return null;
 
     _isUndoRedoOperation = true;
-    _currentIndex++;
-    final state = List<SketchInsert>.from(_history[_currentIndex]);
+    _historyIndex++;
+    final state = List<SketchInsert>.from(_history[_historyIndex]);
 
     // Update the controller's internal state to match the history
     _inserts.clear();
@@ -241,8 +249,18 @@ class MultiCanvasSketchController extends ChangeNotifier {
   /// Clear all history
   void clearHistory() {
     _history.clear();
-    _currentIndex = -1;
+    _historyIndex = -1;
     notifyListeners();
+  }
+
+  /// Schedule auto-save with debouncing to avoid saving on every draw point
+  void _scheduleAutoSave() {
+    _autoSaveTimer?.cancel();
+    _autoSaveTimer = Timer(_autoSaveDelay, () {
+      if (!_isUndoRedoOperation) {
+        saveState(_inserts);
+      }
+    });
   }
 
   /// Check if two states are equal (to avoid duplicate saves)
@@ -266,19 +284,64 @@ class MultiCanvasSketchController extends ChangeNotifier {
     return true;
   }
 
+  /// Reinitialize the entire controller state with new parameters
+  ///
+  /// [color] - New initial color (defaults to current initialColor)
+  /// [strokeWidth] - New initial stroke width (defaults to current initialStrokeWidth)
+  /// [fontSize] - New initial font size (defaults to current initialFontSize)
+  /// [defaultInserts] - New default inserts to load (optional)
+  void initWith({
+    Color? color,
+    double? strokeWidth,
+    double? fontSize,
+    List<SketchInsert>? defaultInserts,
+  }) {
+    // Cancel any pending auto-save operations
+    _autoSaveTimer?.cancel();
+
+    // Reset mode
+    _mode = SketchMode.none;
+
+    // Update state with new or existing values
+    _color = color ?? initialColor;
+    _strokeWidth = strokeWidth ?? initialStrokeWidth;
+    _fontSize = fontSize ?? initialFontSize;
+
+    // Clear all state
+    _inserts.clear();
+    _registeredRegions.clear();
+    _history.clear();
+    _historyIndex = -1;
+    _isUndoRedoOperation = false;
+
+    // Load new default inserts if provided
+    if (defaultInserts != null) {
+      _inserts.addAll(defaultInserts);
+    }
+
+    // Save initial state to history (after a frame to ensure proper initialization)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      saveState(_inserts);
+    });
+
+    notifyListeners();
+  }
+
   /// Reset all settings to initial values
   void reset() {
     _mode = SketchMode.none;
-    _selectedColor = initialColor;
-    _selectedStrokeWidth = initialStrokeWidth;
-    _selectedFontSize = initialFontSize;
+    _color = initialColor;
+    _strokeWidth = initialStrokeWidth;
+    _fontSize = initialFontSize;
     _registeredRegions.clear();
     clearHistory();
+    clearInserts();
     notifyListeners();
   }
 
   @override
   void dispose() {
+    _autoSaveTimer?.cancel();
     _history.clear();
     super.dispose();
   }

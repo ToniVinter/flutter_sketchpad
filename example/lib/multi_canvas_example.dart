@@ -443,6 +443,17 @@ class _MultiCanvasExamplePageState extends State<MultiCanvasExamplePage>
     });
   }
 
+  // Check if scrolling should be disabled
+  bool _shouldDisableScrolling() {
+    // Disable scrolling when:
+    // 1. Sketch mode is active AND
+    // 2. Controller exists AND
+    // 3. A drawing mode is active (not SketchMode.none)
+    return isSketchMode &&
+        controller != null &&
+        controller!.mode != SketchMode.none;
+  }
+
   // Build positioned toolbar based on current selection
   Widget _buildPositionedToolbar() {
     if (isLoadingInserts || controller == null) {
@@ -611,6 +622,9 @@ class _MultiCanvasExamplePageState extends State<MultiCanvasExamplePage>
               ],
             ),
             body: SingleChildScrollView(
+              physics: _shouldDisableScrolling()
+                  ? const NeverScrollableScrollPhysics()
+                  : null,
               padding: const EdgeInsets.all(20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

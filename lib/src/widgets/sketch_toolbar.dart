@@ -162,150 +162,157 @@ class _SketchToolbarState extends State<SketchToolbar>
   }
 
   Widget _buildToolbar() {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(22),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface.withAlpha(204),
-            borderRadius: BorderRadius.circular(22),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withAlpha(26),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
-              ),
-            ],
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: [
+          // Primary shadow for depth
+          BoxShadow(
+            color: Colors.black.withAlpha(64),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+            spreadRadius: 1,
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Drawing mode toggle (pen icon)
-              _buildToolbarButton(
-                icon: LucideIcons.pen,
-                isSelected: widget.controller.mode == SketchMode.drawing,
-                tooltip: 'Toggle Drawing Mode',
-                onPressed: () => widget.controller.setMode(
-                  widget.controller.mode == SketchMode.drawing
-                      ? SketchMode.none
-                      : SketchMode.drawing,
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(22),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface.withAlpha(204),
+              borderRadius: BorderRadius.circular(22),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Drawing mode toggle (pen icon)
+                _buildToolbarButton(
+                  icon: LucideIcons.pen,
+                  isSelected: widget.controller.mode == SketchMode.drawing,
+                  tooltip: 'Toggle Drawing Mode',
+                  onPressed: () => widget.controller.setMode(
+                    widget.controller.mode == SketchMode.drawing
+                        ? SketchMode.none
+                        : SketchMode.drawing,
+                  ),
+                  context: context,
                 ),
-                context: context,
-              ),
 
-              const SizedBox(width: 12),
-              // Highlight mode toggle
-              _buildToolbarButton(
-                icon: LucideIcons.highlighter,
-                isSelected: widget.controller.mode == SketchMode.highlighting,
-                tooltip: 'Toggle Highlight Mode',
-                onPressed: () => widget.controller.setMode(
-                  widget.controller.mode == SketchMode.highlighting
-                      ? SketchMode.none
-                      : SketchMode.highlighting,
-                ),
-                context: context,
-              ),
-
-              const SizedBox(width: 12),
-              // Text mode toggle (text icon)
-              _buildToolbarButton(
-                icon: LucideIcons.type,
-                isSelected: widget.controller.mode == SketchMode.text,
-                tooltip: 'Toggle Text Mode',
-                onPressed: () => widget.controller.setMode(
-                  widget.controller.mode == SketchMode.text
-                      ? SketchMode.none
-                      : SketchMode.text,
-                ),
-                context: context,
-              ),
-
-              const SizedBox(width: 12),
-              // Eraser mode toggle
-              _buildToolbarButton(
-                icon: LucideIcons.eraser,
-                isSelected: widget.controller.mode == SketchMode.eraser,
-                tooltip: 'Toggle Eraser Mode',
-                onPressed: () {
-                  if (widget.controller.mode == SketchMode.eraser) {
-                    widget.controller.setMode(SketchMode.none);
-                  } else {
-                    widget.controller.setMode(SketchMode.eraser);
-                    // Set default stroke width for eraser to 16 pixels
-                    widget.controller.setStrokeWidth(16.0);
-                  }
-                },
-                context: context,
-              ),
-
-              // Drawing mode controls: color & stroke width only
-              if (widget.controller.mode == SketchMode.drawing) ...[
                 const SizedBox(width: 12),
-                _buildDivider(),
-                const SizedBox(width: 12),
-                SketchColorButton(
-                  initialColor: widget.controller.initialColor,
-                  onColorSelected: widget.controller.setColor,
+                // Highlight mode toggle
+                _buildToolbarButton(
+                  icon: LucideIcons.highlighter,
+                  isSelected: widget.controller.mode == SketchMode.highlighting,
+                  tooltip: 'Toggle Highlight Mode',
+                  onPressed: () => widget.controller.setMode(
+                    widget.controller.mode == SketchMode.highlighting
+                        ? SketchMode.none
+                        : SketchMode.highlighting,
+                  ),
+                  context: context,
                 ),
+
                 const SizedBox(width: 12),
-                SketchStrokeWidthButton(
-                  initialStrokeWidth: widget.controller.initialStrokeWidth,
-                  isHighlightMode: false,
-                  isEraserMode: false,
-                  onStrokeWidthSelected: widget.controller.setStrokeWidth,
+                // Text mode toggle (text icon)
+                _buildToolbarButton(
+                  icon: LucideIcons.type,
+                  isSelected: widget.controller.mode == SketchMode.text,
+                  tooltip: 'Toggle Text Mode',
+                  onPressed: () => widget.controller.setMode(
+                    widget.controller.mode == SketchMode.text
+                        ? SketchMode.none
+                        : SketchMode.text,
+                  ),
+                  context: context,
                 ),
+
+                const SizedBox(width: 12),
+                // Eraser mode toggle
+                _buildToolbarButton(
+                  icon: LucideIcons.eraser,
+                  isSelected: widget.controller.mode == SketchMode.eraser,
+                  tooltip: 'Toggle Eraser Mode',
+                  onPressed: () {
+                    if (widget.controller.mode == SketchMode.eraser) {
+                      widget.controller.setMode(SketchMode.none);
+                    } else {
+                      widget.controller.setMode(SketchMode.eraser);
+                      // Set default stroke width for eraser to 16 pixels
+                      widget.controller.setStrokeWidth(16.0);
+                    }
+                  },
+                  context: context,
+                ),
+
+                // Drawing mode controls: color & stroke width only
+                if (widget.controller.mode == SketchMode.drawing) ...[
+                  const SizedBox(width: 12),
+                  _buildDivider(),
+                  const SizedBox(width: 12),
+                  SketchColorButton(
+                    initialColor: widget.controller.initialColor,
+                    onColorSelected: widget.controller.setColor,
+                  ),
+                  const SizedBox(width: 12),
+                  SketchStrokeWidthButton(
+                    initialStrokeWidth: widget.controller.initialStrokeWidth,
+                    isHighlightMode: false,
+                    isEraserMode: false,
+                    onStrokeWidthSelected: widget.controller.setStrokeWidth,
+                  ),
+                ],
+
+                // Highlight mode controls: color & stroke width
+                if (widget.controller.mode == SketchMode.highlighting) ...[
+                  const SizedBox(width: 12),
+                  _buildDivider(),
+                  const SizedBox(width: 12),
+                  SketchColorButton(
+                    initialColor: widget.controller.initialColor,
+                    onColorSelected: widget.controller.setColor,
+                  ),
+                  const SizedBox(width: 12),
+                  SketchStrokeWidthButton(
+                    initialStrokeWidth: widget.controller.initialStrokeWidth,
+                    isHighlightMode: true,
+                    isEraserMode: false,
+                    onStrokeWidthSelected: widget.controller.setStrokeWidth,
+                  ),
+                ],
+
+                // Eraser mode controls: stroke width only
+                if (widget.controller.mode == SketchMode.eraser) ...[
+                  const SizedBox(width: 12),
+                  _buildDivider(),
+                  const SizedBox(width: 12),
+                  SketchStrokeWidthButton(
+                    initialStrokeWidth: widget.controller.initialStrokeWidth,
+                    isHighlightMode: false,
+                    isEraserMode: true,
+                    onStrokeWidthSelected: widget.controller.setStrokeWidth,
+                  ),
+                ],
+
+                // Text mode controls: color & font size
+                if (widget.controller.mode == SketchMode.text) ...[
+                  const SizedBox(width: 12),
+                  _buildDivider(),
+                  const SizedBox(width: 12),
+                  SketchColorButton(
+                    initialColor: widget.controller.initialColor,
+                    onColorSelected: widget.controller.setColor,
+                  ),
+                  const SizedBox(width: 12),
+                  SketchFontSizeButton(
+                    initialFontSize: widget.controller.initialFontSize,
+                    onFontSizeSelected: widget.controller.setFontSize,
+                  ),
+                ],
               ],
-
-              // Highlight mode controls: color & stroke width
-              if (widget.controller.mode == SketchMode.highlighting) ...[
-                const SizedBox(width: 12),
-                _buildDivider(),
-                const SizedBox(width: 12),
-                SketchColorButton(
-                  initialColor: widget.controller.initialColor,
-                  onColorSelected: widget.controller.setColor,
-                ),
-                const SizedBox(width: 12),
-                SketchStrokeWidthButton(
-                  initialStrokeWidth: widget.controller.initialStrokeWidth,
-                  isHighlightMode: true,
-                  isEraserMode: false,
-                  onStrokeWidthSelected: widget.controller.setStrokeWidth,
-                ),
-              ],
-
-              // Eraser mode controls: stroke width only
-              if (widget.controller.mode == SketchMode.eraser) ...[
-                const SizedBox(width: 12),
-                _buildDivider(),
-                const SizedBox(width: 12),
-                SketchStrokeWidthButton(
-                  initialStrokeWidth: widget.controller.initialStrokeWidth,
-                  isHighlightMode: false,
-                  isEraserMode: true,
-                  onStrokeWidthSelected: widget.controller.setStrokeWidth,
-                ),
-              ],
-
-              // Text mode controls: color & font size
-              if (widget.controller.mode == SketchMode.text) ...[
-                const SizedBox(width: 12),
-                _buildDivider(),
-                const SizedBox(width: 12),
-                SketchColorButton(
-                  initialColor: widget.controller.initialColor,
-                  onColorSelected: widget.controller.setColor,
-                ),
-                const SizedBox(width: 12),
-                SketchFontSizeButton(
-                  initialFontSize: widget.controller.initialFontSize,
-                  onFontSizeSelected: widget.controller.setFontSize,
-                ),
-              ],
-            ],
+            ),
           ),
         ),
       ),

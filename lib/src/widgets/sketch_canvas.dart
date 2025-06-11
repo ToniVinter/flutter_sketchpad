@@ -1,10 +1,10 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+
 import '../models/sketch_insert.dart';
-import '../models/sketch_painter.dart';
 import '../models/sketch_mode.dart';
+import '../models/sketch_painter.dart';
 
 class SketchCanvas extends StatefulWidget {
   const SketchCanvas({
@@ -179,8 +179,9 @@ class _SketchCanvasState extends State<SketchCanvas> {
       position: _textController.editPosition!,
       controller: _textController.textEditingController,
       focusNode: _textController.focusNode,
-      color: widget.selectedColor,
-      fontSize: widget.selectedFontSize,
+      color: _textController.currentEditingColor ?? widget.selectedColor,
+      fontSize:
+          _textController.currentEditingFontSize ?? widget.selectedFontSize,
       onComplete: _textController.saveText,
       onTapOutside: () => FocusScope.of(context).unfocus(),
     );
@@ -516,6 +517,10 @@ class TextController {
   String? _draggingTextId;
   Offset? _dragStartPosition;
 
+  // Store original text properties when editing existing text
+  Color? _originalTextColor;
+  double? _originalTextFontSize;
+
   // Store parent context info for callbacks
   String? _sectionId;
   Color? _selectedColor;
@@ -525,6 +530,11 @@ class TextController {
   bool get isEditingText => _isEditingText;
   Offset? get editPosition => _editPosition;
   bool isEditing(String id) => _editingTextId == id;
+
+  // Getters for the current editing properties
+  Color? get currentEditingColor => _originalTextColor ?? _selectedColor;
+  double? get currentEditingFontSize =>
+      _originalTextFontSize ?? _selectedFontSize;
 
   void initialize() {
     focusNode = FocusNode();
@@ -554,6 +564,11 @@ class TextController {
     textEditingController.clear();
     _isEditingText = true;
     _editingTextId = null;
+
+    // Clear original text properties for new text
+    _originalTextColor = null;
+    _originalTextFontSize = null;
+
     onStateChanged();
 
     Future.delayed(
@@ -573,6 +588,10 @@ class TextController {
     _editingTextId = insert.id;
     onStateChanged();
 
+    // Store original text properties
+    _originalTextColor = insert.color;
+    _originalTextFontSize = insert.fontSize;
+
     Future.delayed(
       const Duration(milliseconds: 50),
       () {
@@ -586,13 +605,26 @@ class TextController {
   /// Automatically scroll to keep the text field visible
   void _ensureTextFieldVisible() {
     if (focusNode.context != null) {
+      // Immediate smooth scroll for when keyboard is already active
       Scrollable.ensureVisible(
         focusNode.context!,
-        duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
         alignmentPolicy: ScrollPositionAlignmentPolicy.explicit,
         alignment: 0.3,
       );
+
+      // Delayed refined scroll to handle keyboard appearance smoothly
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (focusNode.context != null && focusNode.hasFocus) {
+          Scrollable.ensureVisible(
+            focusNode.context!,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+            alignmentPolicy: ScrollPositionAlignmentPolicy.explicit,
+            alignment: 0.3,
+          );
+        }
+      });
     }
   }
 
@@ -688,6 +720,8 @@ class TextController {
     _isEditingText = false;
     _editPosition = null;
     _editingTextId = null;
+    _originalTextColor = null;
+    _originalTextFontSize = null;
     textEditingController.clear();
     onStateChanged();
   }
