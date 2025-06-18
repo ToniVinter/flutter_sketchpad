@@ -4,11 +4,11 @@ import 'sketch_settings_overlay.dart';
 class SketchColorButton extends StatefulWidget {
   const SketchColorButton({
     required this.onColorSelected,
-    this.initialColor = Colors.black,
+    this.color = Colors.black,
     super.key,
   });
 
-  final Color initialColor;
+  final Color color;
   final ValueChanged<Color> onColorSelected;
 
   @override
@@ -21,16 +21,16 @@ class _SketchColorButtonState extends State<SketchColorButton> {
   @override
   void initState() {
     super.initState();
-    _selectedColor = _getValidColor(widget.initialColor);
+    _selectedColor = _getValidColor(widget.color);
   }
 
   @override
   void didUpdateWidget(SketchColorButton oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    // If initialColor changed, ensure it's valid
-    if (oldWidget.initialColor != widget.initialColor) {
-      final validColor = _getValidColor(widget.initialColor);
+    // If color changed, ensure it's valid
+    if (oldWidget.color != widget.color) {
+      final validColor = _getValidColor(widget.color);
       if (validColor != _selectedColor) {
         setState(() {
           _selectedColor = validColor;

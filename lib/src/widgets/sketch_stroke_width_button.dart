@@ -5,13 +5,13 @@ import 'controls/sketch_settings_overlay.dart';
 class SketchStrokeWidthButton extends StatefulWidget {
   const SketchStrokeWidthButton({
     required this.onStrokeWidthSelected,
-    this.initialStrokeWidth = 4.0,
+    this.strokeWidth = 4.0,
     this.isHighlightMode = false,
     this.isEraserMode = false,
     super.key,
   });
 
-  final double initialStrokeWidth;
+  final double strokeWidth;
   final ValueChanged<double> onStrokeWidthSelected;
   final bool isHighlightMode;
   final bool isEraserMode;
@@ -27,21 +27,25 @@ class _SketchStrokeWidthButtonState extends State<SketchStrokeWidthButton> {
   @override
   void initState() {
     super.initState();
-    _selectedStrokeWidth = _getValidStrokeWidth(widget.initialStrokeWidth);
+    _selectedStrokeWidth = _getValidStrokeWidth(widget.strokeWidth);
   }
 
   @override
   void didUpdateWidget(SketchStrokeWidthButton oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    // If mode changed, ensure selected stroke width is valid for new mode
-    if (oldWidget.isEraserMode != widget.isEraserMode ||
-        oldWidget.isHighlightMode != widget.isHighlightMode) {
-      final validStrokeWidth = _getValidStrokeWidth(_selectedStrokeWidth);
+    final isModeChanged = oldWidget.isEraserMode != widget.isEraserMode ||
+        oldWidget.isHighlightMode != widget.isHighlightMode;
+
+    // If stroke width or mode changes, re-validate and update
+    if (oldWidget.strokeWidth != widget.strokeWidth || isModeChanged) {
+      final validStrokeWidth = _getValidStrokeWidth(widget.strokeWidth);
+
       if (validStrokeWidth != _selectedStrokeWidth) {
         setState(() {
           _selectedStrokeWidth = validStrokeWidth;
         });
+
         // Defer notification to after build phase completes
         WidgetsBinding.instance.addPostFrameCallback((_) {
           widget.onStrokeWidthSelected(_selectedStrokeWidth);

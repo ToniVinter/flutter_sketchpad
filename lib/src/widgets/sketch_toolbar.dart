@@ -253,12 +253,12 @@ class _SketchToolbarState extends State<SketchToolbar>
                   _buildDivider(),
                   const SizedBox(width: 12),
                   SketchColorButton(
-                    initialColor: widget.controller.initialColor,
+                    color: widget.controller.selectedColor,
                     onColorSelected: widget.controller.setColor,
                   ),
                   const SizedBox(width: 12),
                   SketchStrokeWidthButton(
-                    initialStrokeWidth: widget.controller.initialStrokeWidth,
+                    strokeWidth: widget.controller.selectedStrokeWidth,
                     isHighlightMode: false,
                     isEraserMode: false,
                     onStrokeWidthSelected: widget.controller.setStrokeWidth,
@@ -271,12 +271,12 @@ class _SketchToolbarState extends State<SketchToolbar>
                   _buildDivider(),
                   const SizedBox(width: 12),
                   SketchColorButton(
-                    initialColor: widget.controller.initialColor,
+                    color: widget.controller.selectedColor,
                     onColorSelected: widget.controller.setColor,
                   ),
                   const SizedBox(width: 12),
                   SketchStrokeWidthButton(
-                    initialStrokeWidth: widget.controller.initialStrokeWidth,
+                    strokeWidth: widget.controller.selectedStrokeWidth,
                     isHighlightMode: true,
                     isEraserMode: false,
                     onStrokeWidthSelected: widget.controller.setStrokeWidth,
@@ -289,7 +289,7 @@ class _SketchToolbarState extends State<SketchToolbar>
                   _buildDivider(),
                   const SizedBox(width: 12),
                   SketchStrokeWidthButton(
-                    initialStrokeWidth: widget.controller.initialStrokeWidth,
+                    strokeWidth: widget.controller.selectedStrokeWidth,
                     isHighlightMode: false,
                     isEraserMode: true,
                     onStrokeWidthSelected: widget.controller.setStrokeWidth,
@@ -302,12 +302,12 @@ class _SketchToolbarState extends State<SketchToolbar>
                   _buildDivider(),
                   const SizedBox(width: 12),
                   SketchColorButton(
-                    initialColor: widget.controller.initialColor,
+                    color: widget.controller.selectedColor,
                     onColorSelected: widget.controller.setColor,
                   ),
                   const SizedBox(width: 12),
                   SketchFontSizeButton(
-                    initialFontSize: widget.controller.initialFontSize,
+                    fontSize: widget.controller.selectedFontSize,
                     onFontSizeSelected: widget.controller.setFontSize,
                   ),
                 ],

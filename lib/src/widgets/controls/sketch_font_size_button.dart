@@ -5,11 +5,11 @@ import 'sketch_settings_overlay.dart';
 class SketchFontSizeButton extends StatefulWidget {
   const SketchFontSizeButton({
     required this.onFontSizeSelected,
-    this.initialFontSize = 16.0,
+    this.fontSize = 16.0,
     super.key,
   });
 
-  final double initialFontSize;
+  final double fontSize;
   final ValueChanged<double> onFontSizeSelected;
 
   @override
@@ -22,7 +22,17 @@ class _SketchFontSizeButtonState extends State<SketchFontSizeButton> {
   @override
   void initState() {
     super.initState();
-    _selectedFontSize = widget.initialFontSize;
+    _selectedFontSize = widget.fontSize;
+  }
+
+  @override
+  void didUpdateWidget(SketchFontSizeButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.fontSize != widget.fontSize) {
+      setState(() {
+        _selectedFontSize = widget.fontSize;
+      });
+    }
   }
 
   void _onFontSizeSelected(double fontSize) {
